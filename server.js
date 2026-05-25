@@ -7,6 +7,9 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3456;
 
+// Health check for Render
+app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -143,6 +146,6 @@ function updateStats() {
 }
 
 // ─── START ───
-app.listen(PORT, () => {
-  console.log(`🚛 极速车队 API 运行在 http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚛 极速车队 API 运行在端口 ${PORT}`);
 });
