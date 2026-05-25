@@ -37,6 +37,8 @@ const state = {
   repairPhoto: null,
   repairCostLevel: 'medium',
   repairCostLabel: '¥500~2000',
+  receiptVoiceNote: '',
+  repairVoiceNote: '',
   latestRepair: null,
   receiptUploaded: false,
 };
@@ -136,6 +138,11 @@ function renderReceiptPhoto(root) {
     <button class="btn btn-primary btn-block mt-16" onclick="takeReceiptPhoto()" id="btn-take-receipt">
       📸 拍照
     </button>
+    <div class="voice-btn mt-12 hidden" id="voice-btn-receipt"
+         onmousedown="startVoice('receipt')" onmouseup="stopVoice('receipt')" onmouseleave="stopVoice('receipt')"
+         ontouchstart="startVoice('receipt');event.preventDefault()" ontouchend="stopVoice('receipt')">
+      🎤 按住说话
+    </div>
     <button class="btn btn-success btn-block mt-12 hidden" id="btn-next-receipt" onclick="navigate('receipt-confirm')">
       下一步 →
     </button>
@@ -168,8 +175,46 @@ function takeReceiptPhoto() {
   img.src = dataUrl;
   img.style.display = 'block';
   document.getElementById('btn-take-receipt').classList.add('hidden');
+  document.getElementById('voice-btn-receipt').classList.remove('hidden');
   document.getElementById('btn-next-receipt').classList.remove('hidden');
   toast('📸 拍摄成功');
+}
+
+// ─── Voice Recording ───
+let voiceTimer = null;
+function startVoice(type) {
+  const btn = document.getElementById('voice-btn-' + type);
+  if (!btn || btn.classList.contains('done')) return;
+  btn.classList.add('recording');
+  btn.innerHTML = '<span class="dot dot-red pulse"></span> 正在录音…松手结束';
+  voiceTimer = setTimeout(() => {
+    const mockText = type === 'receipt'
+      ? '语音备注：客户已签收，货物完好无损，请尽快审核回单。'
+      : '语音备注：发动机有异响，位置在变速箱附近，怀疑气门间隙过大，麻烦王姐审批。';
+    if (type === 'receipt') state.receiptVoiceNote = mockText;
+    else state.repairVoiceNote = mockText;
+    btn.classList.remove('recording');
+    btn.classList.add('done');
+    btn.innerHTML = '✅ 语音已录制（点击重录）';
+    toast('🎤 语音已录制');
+  }, 2000);
+}
+function stopVoice(type) {
+  clearTimeout(voiceTimer);
+  const btn = document.getElementById('voice-btn-' + type);
+  if (!btn || btn.classList.contains('done')) return;
+  btn.classList.remove('recording');
+  btn.innerHTML = '🎤 按住说话';
+}
+
+function resetVoice(type) {
+  if (type === 'receipt') state.receiptVoiceNote = '';
+  else state.repairVoiceNote = '';
+  const btn = document.getElementById('voice-btn-' + type);
+  if (btn) {
+    btn.classList.remove('done', 'recording');
+    btn.innerHTML = '🎤 按住说话';
+  }
 }
 
 // ══════════════════════ RECEIPT CONFIRM ══════════════════════
@@ -189,6 +234,7 @@ function renderReceiptConfirm(root) {
       <div class="text-secondary mt-8" style="font-size:13px;">
         V202603001 · 北京华为研究所 · 深圳→北京
       </div>
+      ${state.receiptVoiceNote ? `<div class="mt-8" style="font-size:12px;color:var(--green);">🎤 ${state.receiptVoiceNote}</div>` : ''}
     </div>
 
     <div class="flex gap-12 mt-16">
@@ -296,6 +342,11 @@ function renderMaintenanceReport(root) {
       </div>
     </div>
 
+    <div class="voice-btn mt-16 hidden" id="voice-btn-repair"
+         onmousedown="startVoice('repair')" onmouseup="stopVoice('repair')" onmouseleave="stopVoice('repair')"
+         ontouchstart="startVoice('repair');event.preventDefault()" ontouchend="stopVoice('repair')">
+      🎤 按住说话（描述故障）
+    </div>
     <button class="btn btn-danger btn-lg btn-block mt-24" onclick="submitRepair()">📤 提交报修</button>
   `;
 }
@@ -346,6 +397,7 @@ function takeRepairPhoto() {
   const img = document.getElementById('repair-preview');
   img.src = state.repairPhoto;
   img.style.display = 'block';
+  document.getElementById('voice-btn-repair').classList.remove('hidden');
   toast('📸 故障照片已拍摄');
 }
 
@@ -357,7 +409,8 @@ async function submitRepair() {
       body: JSON.stringify({
         plate: PLATE, driver_name: DRIVER,
         issue: '发动机异响', location: 'G25长深高速·湖州服务区',
-        cost_level: state.repairCostLevel, cost_label: state.repairCostLabel
+        cost_level: state.repairCostLevel, cost_label: state.repairCostLabel,
+        voice_note: state.repairVoiceNote || null
       })
     });
     state.latestRepair = res;

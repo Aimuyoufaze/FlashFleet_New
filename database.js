@@ -31,6 +31,7 @@ db.exec(`
     cost_level TEXT NOT NULL DEFAULT 'medium',
     cost_label TEXT,
     photo_url TEXT,
+    voice_note TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     approver TEXT,
     notes TEXT,

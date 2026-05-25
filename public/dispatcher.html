@@ -221,6 +221,7 @@ function renderPendingRepairs(repairs) {
         <div class="repair-plate">🔧 ${r.plate}</div>
         <div class="repair-detail">${r.driver_name} · ${r.location || '未知位置'}</div>
         <div class="repair-detail">故障：${r.issue} · 金额：${r.cost_label} · ${r.created_at || ''}</div>
+        ${r.voice_note ? `<div class="repair-detail" style="color:var(--blue);margin-top:4px;">🎤 ${r.voice_note}</div>` : ''}
       </div>
       <div class="repair-actions">
         <button class="btn btn-success btn-sm" onclick="approve('${r.id}')">✅ 通过</button>
@@ -238,6 +239,7 @@ function renderPendingRepairs(repairs) {
       <div class="repair-info">
         <div class="repair-plate">🔧 ${r.plate}</div>
         <div class="repair-detail">${r.driver_name} · ${r.issue} · ${r.cost_label}</div>
+        ${r.voice_note ? `<div class="repair-detail" style="color:var(--blue);margin-top:4px;">🎤 ${r.voice_note}</div>` : ''}
         <div class="repair-detail"><span class="badge ${badgeClass}">${label}</span></div>
       </div>
     </div>`;

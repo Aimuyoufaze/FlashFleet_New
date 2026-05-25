@@ -401,6 +401,24 @@ h3 { font-size: 16px; font-weight: 600; }
   .repair-item .repair-actions .btn { flex: 1; }
 }
 
+/* ═══ VOICE BUTTON ═══ */
+.voice-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 18px 24px; border: 2px dashed var(--border);
+  border-radius: var(--radius); background: var(--bg-card);
+  cursor: pointer; transition: all .15s; user-select: none;
+  font-size: 16px; font-weight: 600; color: var(--text-secondary);
+}
+.voice-btn:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+.voice-btn.recording {
+  border-color: var(--red); color: var(--red); background: var(--red-bg);
+  animation: pulse 1s ease-in-out infinite; border-style: solid;
+}
+.voice-btn.done {
+  border-color: var(--green); color: var(--green); background: var(--green-bg);
+  border-style: solid; cursor: default;
+}
+
 /* ═══ ANIMATIONS ═══ */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .fade-up { animation: fadeUp .3s ease; }

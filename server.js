@@ -64,10 +64,10 @@ app.get('/api/repairs', (req, res) => {
 });
 
 app.post('/api/repairs', upload.single('photo'), (req, res) => {
-  const { plate, driver_name, issue, location, cost_level, cost_label } = req.body;
+  const { plate, driver_name, issue, location, cost_level, cost_label, voice_note } = req.body;
   const photo_url = req.file ? '/uploads/' + req.file.filename : null;
-  const result = db.prepare(`INSERT INTO repairs (plate, driver_name, issue, location, cost_level, cost_label, photo_url) VALUES (?,?,?,?,?,?,?)`)
-    .run(plate, driver_name, issue, location, cost_level, cost_label, photo_url);
+  const result = db.prepare(`INSERT INTO repairs (plate, driver_name, issue, location, cost_level, cost_label, photo_url, voice_note) VALUES (?,?,?,?,?,?,?,?)`)
+    .run(plate, driver_name, issue, location, cost_level, cost_label, photo_url, voice_note || null);
 
   // Update vehicle status to repair
   db.prepare(`UPDATE vehicles SET status='repair', updated_at=datetime('now','localtime') WHERE plate=? AND status != 'repair'`).run(plate);
