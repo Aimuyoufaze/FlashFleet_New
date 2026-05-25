@@ -1,0 +1,7 @@
+node_modules/
+fleet.db
+public/uploads/*
+!public/uploads/.gitkeep
+.DS_Store
+fleet.db-shm
+fleet.db-wal

@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>极速车队 - 原型演示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --green: #22c55e; --yellow: #eab308; --red: #ef4444; --blue: #3b82f6;
+    --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --text2: #64748b;
+    --radius: 12px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+
+  /* ========== ROLE SELECT ========== */
+  #role-select {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 40px 20px;
+  }
+  #role-select h1 { font-size: 28px; margin-bottom: 8px; }
+  #role-select p { color: var(--text2); margin-bottom: 32px; font-size: 15px; }
+  .role-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .role-card {
+    width: 200px; padding: 32px 24px; background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); text-align: center; cursor: pointer; transition: transform .15s, box-shadow .15s;
+  }
+  .role-card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .role-card .icon { font-size: 48px; margin-bottom: 16px; }
+  .role-card h3 { font-size: 20px; margin-bottom: 6px; }
+  .role-card p { font-size: 13px; color: var(--text2); }
+  .badge-role { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; color: #fff; margin-top: 12px; }
+
+  /* ========== PHONE FRAME ========== */
+  .phone-frame {
+    max-width: 400px; margin: 0 auto; background: var(--card); min-height: 100vh;
+    position: relative; box-shadow: 0 0 0 1px #e2e8f0;
+    display: none; flex-direction: column;
+  }
+  .phone-frame.active { display: flex; }
+
+  /* ========== STATUS BAR ========== */
+  .status-bar {
+    display: flex; justify-content: space-between; padding: 8px 16px 4px;
+    font-size: 12px; color: var(--text2); background: #f8fafc;
+  }
+
+  /* ========== HEADER ========== */
+  .header {
+    display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0;
+    background: #fff; position: sticky; top: 0; z-index: 10;
+  }
+  .header .back { font-size: 22px; cursor: pointer; padding: 4px 8px 4px 0; user-select: none; }
+  .header .title { flex: 1; font-size: 17px; font-weight: 600; text-align: center; }
+  .header .right { font-size: 13px; color: var(--blue); cursor: pointer; }
+
+  /* ========== SCREEN ========== */
+  .screen { display: none; flex-direction: column; flex: 1; padding: 16px; gap: 16px; }
+  .screen.active { display: flex; }
+
+  /* ========== COMPONENTS ========== */
+  .big-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 20px; border-radius: var(--radius); border: 2px dashed #cbd5e1;
+    background: #f8fafc; cursor: pointer; transition: background .15s; text-align: center;
+    min-height: 180px;
+  }
+  .big-btn .icon { font-size: 52px; margin-bottom: 12px; }
+  .big-btn .label { font-size: 20px; font-weight: 600; }
+  .big-btn .sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+  .big-btn:hover { background: #f1f5f9; }
+  .big-btn.primary { border-style: solid; border-color: var(--blue); background: #eff6ff; }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .card-title { font-size: 14px; color: var(--text2); margin-bottom: 8px; }
+
+  /* Floating red button on driver home */
+  .fab-red {
+    position: sticky;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(239,68,68,0.45);
+    transition: transform .15s, box-shadow .15s;
+    margin: 10px auto;
+    font-weight: 700;
+    user-select: none;
+    border: none;
+    flex-shrink: 0;
+  }
+  .fab-red:hover { transform: scale(1.06); box-shadow: 0 8px 30px rgba(239,68,68,0.55); }
+  .fab-red:active { transform: scale(0.97); }
+  .fab-red .icon { font-size: 42px; line-height: 1; }
+  .fab-red .label { font-size: 19px; margin-top: 4px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 14px 0; border: none; border-radius: var(--radius); font-size: 17px;
+    font-weight: 600; cursor: pointer; width: 100%; transition: opacity .15s;
+  }
+  .btn:active { opacity: .7; }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-outline { background: transparent; border: 1.5px solid #cbd5e1; color: var(--text); }
+  .btn-sm { padding: 10px 16px; font-size: 14px; width: auto; }
+
+  .option-group { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    border: 1.5px solid #e2e8f0; border-radius: var(--radius); cursor: pointer;
+    transition: border-color .15s;
+  }
+  .option:hover { border-color: var(--blue); }
+  .option.selected { border-color: var(--blue); background: #eff6ff; }
+  .option .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e1;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .option.selected .radio { border-color: var(--blue); }
+  .option.selected .radio::after { content: ''; width: 10px; height: 10px;
+    border-radius: 50%; background: var(--blue); }
+  .option .opt-label { font-size: 15px; font-weight: 500; }
+  .option .opt-sub { font-size: 12px; color: var(--text2); }
+
+  .photo-preview {
+    width: 100%; aspect-ratio: 4/3; background: #e2e8f0; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text2);
+    position: relative; overflow: hidden;
+  }
+  .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-preview .placeholder { text-align: center; }
+  .photo-preview .placeholder .icon { font-size: 40px; }
+
+  .progress-bar {
+    display: flex; align-items: flex-start; gap: 0; padding: 8px 0;
+    position: relative;
+  }
+  .progress-step {
+    flex: 1; text-align: center; position: relative; padding-top: 28px;
+    font-size: 12px; color: var(--text2);
+  }
+  .progress-step::before {
+    content: ''; position: absolute; top: 10px; left: 0; right: 0; height: 3px;
+    background: #e2e8f0;
+  }
+  .progress-step::after {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 20px; border-radius: 50%; background: #e2e8f0; z-index: 1;
+  }
+  .progress-step.done::before { background: var(--green); }
+  .progress-step.done::after { background: var(--green); }
+  .progress-step.active::after { background: var(--blue); box-shadow: 0 0 0 3px #bfdbfe; }
+  .progress-step.done { color: var(--green); }
+
+  .status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 500;
+  }
+
+  /* ========== DISPATCHER ========== */
+  #screen-dispatcher { padding: 0; gap: 0; }
+  .disp-header {
+    display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0;
+    background: #fff; gap: 8px; flex-wrap: wrap;
+  }
+  .disp-header .title { font-weight: 600; font-size: 16px; flex: 1; }
+  .disp-header .time { font-size: 12px; color: var(--text2); }
+  .disp-tabs { display: flex; border-bottom: 1px solid #e2e8f0; background: #fff; }
+  .disp-tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 500;
+    cursor: pointer; border-bottom: 2px solid transparent; transition: .15s;
+  }
+  .disp-tab.active { border-bottom-color: var(--blue); color: var(--blue); }
+  .disp-tab .count { display: inline-block; margin-left: 4px; padding: 0 8px;
+    border-radius: 99px; font-size: 11px; background: #e2e8f0; }
+  .disp-tab.active .count { background: #bfdbfe; }
+
+  .board { display: none; padding: 12px; gap: 12px; flex-direction: column; flex: 1; }
+  .board.active { display: flex; }
+  .board-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  .vehicle-card {
+    background: var(--card); border-radius: 10px; padding: 12px; box-shadow: var(--shadow);
+    cursor: pointer; transition: .15s; border-left: 3px solid transparent;
+  }
+  .vehicle-card:hover { transform: translateY(-2px); }
+  .vehicle-card .plate { font-size: 16px; font-weight: 700; }
+  .vehicle-card .driver { font-size: 13px; color: var(--text2); }
+  .vehicle-card .info { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .vehicle-card .tag { display: inline-block; padding: 1px 8px; border-radius: 99px;
+    font-size: 11px; margin-top: 6px; }
+  .vehicle-card.green { border-left-color: var(--green); }
+  .vehicle-card.yellow { border-left-color: var(--yellow); }
+  .vehicle-card.red { border-left-color: var(--red); }
+  .tag-green { background: #dcfce7; color: #166534; }
+  .tag-yellow { background: #fef9c3; color: #854d0e; }
+  .tag-red { background: #fee2e2; color: #991b1b; }
+  .tag-blue { background: #dbeafe; color: #1e40af; }
+
+  .pending-list { margin-top: 8px; }
+  .pending-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9; font-size: 13px;
+  }
+  .pending-item:last-child { border: none; }
+  .pending-item .icon { font-size: 18px; }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .screen.active { animation: fadeIn .2s ease; }
+
+  /* ========== SUCCESS OVERLAY ========== */
+  .success-overlay {
+    position: absolute; inset: 0; background: rgba(255,255,255,.95);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 20; padding: 40px; text-align: center;
+  }
+  .success-overlay.show { display: flex; }
+  .success-overlay .icon { font-size: 64px; margin-bottom: 16px; }
+  .success-overlay h2 { font-size: 24px; margin-bottom: 8px; }
+  .success-overlay p { color: var(--text2); font-size: 15px; margin-bottom: 24px; }
+
+  /* ========== TOAST ========== */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 99px;
+    font-size: 14px; z-index: 100; display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .toast.show { display: block; animation: fadeIn .3s ease; }
+
+  /* ========== RESPONSIVE ========== */
+  @media (min-width: 600px) {
+    .phone-frame { min-height: 90vh; border-radius: 24px; margin: 20px auto; overflow: hidden; }
+  }
+
+  @media (max-width: 420px) {
+    .board-grid { grid-template-columns: 1fr; }
+    .role-card { width: 160px; padding: 24px 16px; }
+    .big-btn { padding: 30px 16px; min-height: 140px; }
+    .big-btn .icon { font-size: 40px; }
+  }
+
+  /* Grid for vehicle cards on dispatcher - stacked on mobile */
+  .vehicle-list { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Toast ===== -->
+<div id="toast" class="toast"></div>
+
+<!-- ===== ROLE SELECT ===== -->
+<div id="role-select">
+  <h1>🚛 极速车队</h1>
+  <p>请选择角色进入原型体验</p>
+  <div class="role-grid">
+    <div class="role-card" onclick="enterRole('driver')">
+      <div class="icon">🧑‍🔧</div>
+      <h3>司机端</h3>
+      <p>回单上传 · 维修报销</p>
+      <span class="badge-role" style="background:var(--green)">赵师傅视角</span>
+    </div>
+    <div class="role-card" onclick="enterRole('dispatcher')">
+      <div class="icon">👩‍💻</div>
+      <h3>调度端</h3>
+      <p>车辆看板 · 状态管理</p>
+      <span class="badge-role" style="background:var(--blue)">王姐视角</span>
+    </div>
+  </div>
+  <p style="margin-top:24px;font-size:12px;color:var(--text2)">
+    选择性功能原型 · 极速车队管理信息系统
+  </p>
+</div>
+
+<!-- ===== PHONE FRAME ===== -->
+<div class="phone-frame" id="phone-frame">
+  <div class="status-bar" id="status-bar">
+    <span>13:30</span>
+    <span>🔋 85%</span>
+  </div>
+
+  <!-- ====== DRIVER HOME ====== -->
+  <div class="screen active" id="screen-driver-home">
+    <div class="header">
+      <span class="back" onclick="goHome()">←</span>
+      <span class="title">极速车队</span>
+      <span class="right" onclick="switchRole()">切换角色</span>
+    </div>
+
+    <div style="padding: 0 0 4px 0;">
+      <div style="font-size:13px;color:var(--text2);">🚛 车牌：京A12345</div>
+      <div style="font-size:13px;color:var(--text2);">📦 订单：深圳 → 北京</div>
+    </div>
+
+    <div class="big-btn primary" onclick="goScreen('screen-driver-receipt-step1')">
+      <div class="icon">📸</div>
+      <div class="label">回单拍照上传</div>
+      <div class="sub">点此拍照，无需填表</div>
+    </div>
+
+
+
+    <div class="card" style="background:#f0f9ff;border:1px solid #bae6fd;">
+      <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:6px;">📋 当前状态</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span>订单：已装货</span>
+        <span id="receipt-status" style="color:var(--yellow);">⏳ 未上传回单</span>
+      </div>
+    </div>
+
+    <button class="fab-red" onclick="goScreen('screen-driver-maintenance-report')">
+      <div class="icon">🔧</div>
+      <div class="label">一键报修</div>
+    </button>
+
+    <div style="display:flex;gap:10px;">
+      <div class="btn btn-outline btn-sm" style="flex:1;width:auto;" onclick="showToast('联系王姐中…')">📞 联系王姐</div>
+      <div class="btn btn-outline btn-sm" style="flex:1;width:auto;" onclick="goScreen('screen-driver-maintenance')">查看维修记录</div>
+    </div>
+  </div>
+
+  <!-- ====== DRIVER RECEIPT STEP 1 (拍照) ====== -->
+  <div class="screen" id="screen-driver-receipt-step1">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-home')">←</span>
+      <span class="title">拍照上传</span>
+      <span class="right">1/3</span>
+    </div>
+    <div class="photo-preview" style="flex:1;min-height:280px;" onclick="simulateTakePhoto()">
+      <div class="placeholder" id="photo-placeholder">
+        <div class="icon">📸</div>
+        <div style="font-size:18px;font-weight:600;margin-top:8px;">点击拍照</div>
+        <div style="font-size:13px;margin-top:4px;">将送货单对准摄像头</div>
+      </div>
+      <img id="photo-img" style="display:none;" src="" alt="照片">
+    </div>
+    <div style="font-size:13px;color:var(--text2);text-align:center;padding:4px 0;">
+      提示：请在光线充足处拍摄，确保单据完整清晰
+    </div>
+    <button class="btn btn-blue" onclick="simulateTakePhoto()" id="receipt-take-btn">
+      📸 拍照
+    </button>
+    <button class="btn btn-outline" onclick="goScreen('screen-driver-receipt-step2')" id="receipt-next-btn" style="display:none;">
+      下一步 →
+    </button>
+  </div>
+
+  <!-- ====== DRIVER RECEIPT STEP 2 (预览确认) ====== -->
+  <div class="screen" id="screen-driver-receipt-step2">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-receipt-step1')">←</span>
+      <span class="title">确认回单</span>
+      <span class="right">2/3</span>
+    </div>
+    <div class="photo-preview" style="min-height:200px;">
+      <img src="" id="preview-img" style="width:100%;height:100%;object-fit:cover;" alt="预览">
+    </div>
+    <div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+      <div style="font-size:14px;">✅ 已识别订单</div>
+      <div style="font-size:13px;color:var(--text2);">V202603001 · 北京华为研究所</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline btn-sm" style="flex:1;width:auto;" onclick="goScreen('screen-driver-receipt-step1')">📸 重拍</button>
+      <button class="btn btn-green btn-sm" style="flex:2;width:auto;" onclick="submitReceipt()">✅ 确认提交</button>
+    </div>
+  </div>
+
+  <!-- ====== DRIVER RECEIPT SUCCESS ====== -->
+  <div class="screen" id="screen-driver-receipt-success">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-home')">←</span>
+      <span class="title">提交成功</span>
+      <span class="right">3/3</span>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;">
+      <div style="font-size:64px;">✅</div>
+      <div style="font-size:24px;font-weight:700;">回单已提交！</div>
+      <div style="font-size:14px;color:var(--text2);">
+        订单 V202603001<br>
+        状态：已签收待审核
+      </div>
+      <div class="card" style="width:100%;background:#f0f9ff;border:1px solid #bae6fd;">
+        <div style="display:flex;gap:8px;align-items:center;font-size:14px;">
+          <span>⏱</span>
+          <span>预计 2小时内完成审核</span>
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="goScreen('screen-driver-home')">返回首页</button>
+    </div>
+  </div>
+
+  <!-- ====== DRIVER MAINTENANCE HOME (DYNAMIC) ====== -->
+  <div class="screen" id="screen-driver-maintenance">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-home')">←</span>
+      <span class="title">维修报销</span>
+      <span></span>
+    </div>
+
+    <!-- Dynamic current status -->
+    <div id="driver-repair-status" class="card" style="background:#f8fafc;border:1px solid #e2e8f0;">
+      <div style="font-size:13px;color:var(--text2);">暂无报修记录，点击下方按钮报修</div>
+    </div>
+
+    <button class="fab-red" onclick="goScreen('screen-driver-maintenance-report')" style="margin:4px auto;">
+      <div class="icon">🔧</div>
+      <div class="label">一键报修</div>
+    </button>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:8px;">📜 历史记录</div>
+      <div id="driver-repair-history" style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div style="color:var(--text2);padding:8px 0;">暂无历史记录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== DRIVER MAINTENANCE REPORT (一键报修) ====== -->
+  <div class="screen" id="screen-driver-maintenance-report">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-maintenance')">←</span>
+      <span class="title">一键报修</span>
+      <span></span>
+    </div>
+
+    <div class="card" style="background:#f0f9ff;">
+      <div style="display:flex;gap:8px;font-size:14px;">
+        <span>📍</span>
+        <span>自动定位：G25长深高速 · 湖州服务区</span>
+      </div>
+    </div>
+
+    <div class="photo-preview" style="min-height:180px;" onclick="simulateTakePhoto2()">
+      <div class="placeholder" id="photo2-placeholder">
+        <div class="icon">📸</div>
+        <div style="font-size:18px;font-weight:600;">拍下故障部位</div>
+        <div style="font-size:13px;color:var(--text2);">（必拍）</div>
+      </div>
+      <img id="photo2-img" style="display:none;width:100%;height:100%;object-fit:cover;" src="" alt="故障照片">
+    </div>
+
+    <div class="big-btn" style="min-height:80px;padding:16px;" onclick="showToast('🎤 语音录入中…长按说完松手')">
+      <div class="icon" style="font-size:32px;margin-bottom:0;">🎤</div>
+      <div class="label" style="font-size:16px;">按住说话，描述故障</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">预判维修金额</div>
+      <div class="option-group">
+        <div class="option" onclick="selectOption(this, 'cost-500')" id="cost-500">
+          <div class="radio"></div>
+          <div>
+            <div class="opt-label">¥500以下</div>
+            <div class="opt-sub">自行处理，事后报销</div>
+          </div>
+        </div>
+        <div class="option selected" onclick="selectOption(this, 'cost-2000')" id="cost-2000">
+          <div class="radio"></div>
+          <div>
+            <div class="opt-label">¥500 ~ ¥2,000</div>
+            <div class="opt-sub">王姐审批（需照片+定位）</div>
+          </div>
+        </div>
+        <div class="option" onclick="selectOption(this, 'cost-up')" id="cost-up">
+          <div class="radio"></div>
+          <div>
+            <div class="opt-label">¥2,000以上</div>
+            <div class="opt-sub">李老板审批</div>
+          </div>
+        </div>
+        <div class="option" onclick="selectOption(this, 'cost-emergency')" id="cost-emergency" style="border-color:var(--red);">
+          <div class="radio"></div>
+          <div>
+            <div class="opt-label" style="color:var(--red);">🚨 紧急情况</div>
+            <div class="opt-sub">高速爆胎等 · 先修后补 · 15分钟自动升级</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-red" onclick="submitMaintenance()">
+      📤 提交报修
+    </button>
+  </div>
+
+  <!-- ====== DRIVER MAINTENANCE PROGRESS (DYNAMIC) ====== -->
+  <div class="screen" id="screen-driver-maintenance-progress">
+    <div class="header">
+      <span class="back" onclick="goScreen('screen-driver-maintenance')">←</span>
+      <span class="title">报销进度</span>
+      <span></span>
+    </div>
+
+    <div id="driver-progress-card" class="card">
+      <div style="padding:20px;text-align:center;color:var(--text2);">加载中…</div>
+    </div>
+
+    <div id="driver-progress-urgent" class="card" style="background:#fef2f2;border:1px solid #fecaca;display:none;">
+      <div style="font-size:14px;font-weight:600;color:var(--red);">⏰ 需要加急？</div>
+      <div style="font-size:13px;margin:4px 0 10px;color:var(--text2);">联系李老板处理紧急情况</div>
+      <button class="btn btn-sm btn-red" style="width:auto;" onclick="showToast('📞 正在连接李老板…')">📞 一键呼叫</button>
+    </div>
+
+    <button class="btn btn-outline" onclick="goScreen('screen-driver-maintenance')">返回</button>
+  </div>
+
+  <!-- ====== DISPATCHER ====== -->
+  <div class="screen" id="screen-dispatcher">
+    <div class="disp-header">
+      <span class="title">🚛 极速车队 调度面板</span>
+      <span class="time">王姐 · 2026-04-15</span>
+      <span style="font-size:13px;color:var(--blue);cursor:pointer;" onclick="switchRole()">切换角色</span>
+    </div>
+
+    <div class="disp-tabs">
+      <div class="disp-tab active" onclick="switchBoard('board-pending',this)">📋 待处理 <span class="count">3</span></div>
+      <div class="disp-tab" onclick="switchBoard('board-all',this)">🚛 全部车辆</div>
+    </div>
+
+    <!-- Pending board -->
+    <div class="board active" id="board-pending">
+      <!-- Cross-role notification banner -->
+      <div id="cross-role-banner" style="display:none;padding:10px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:var(--radius);font-size:14px;">
+        🔔 <span id="banner-text">赵师傅提交了新的报修申请</span>
+      </div>
+      <!-- Dynamic pending repairs injected here -->
+      <div id="pending-repairs-container"></div>
+
+      <!-- Clear processed button -->
+      <div id="clear-processed-area" style="display:none;text-align:center;margin-bottom:8px;">
+        <button class="btn btn-sm btn-outline" style="width:auto;padding:8px 20px;" onclick="clearProcessedRepairs()">🧹 一键清理已审核</button>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--yellow);">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-weight:600;">📦 京B23456 到货确认</span>
+          <span class="status-badge" style="background:#dbeafe;color:var(--blue);">待签收</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px;">等待收货方签收确认</div>
+        <button class="btn btn-sm btn-outline" style="width:auto;margin-top:10px;" onclick="showToast('已发送签收提醒')">提醒签收</button>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--red);">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-weight:600;">⏰ 京A12347 超时预警</span>
+          <span class="status-badge" style="background:#fee2e2;color:#991b1b;">超时2h</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px;">预计到达 12:00 · 已超时</div>
+        <button class="btn btn-sm btn-outline" style="width:auto;margin-top:10px;" onclick="showToast('📞 正在联系刘师傅…')">联系司机</button>
+      </div>
+
+      <div class="card" style="background:#f0f9ff;border:1px solid #bae6fd;margin-top:8px;">
+        <div style="font-weight:600;font-size:14px;">📊 今日统计</div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:13px;">
+          <span>🟢 待命 8辆</span>
+          <span>🟡 在途 35辆</span>
+          <span>🔴 维修 2辆</span>
+          <span id="stats-repair-alert"></span>
+          <span>📦 完成 12单</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- All vehicles board -->
+    <!-- Add a note about cross-role testing -->
+    <div style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);margin:0 12px;font-size:12px;color:#166534;">
+      💡 先用赵师傅角色提交报修，再切回王姐即可看到申请。
+    </div>
+
+    <div class="board" id="board-all">
+      <div class="board-grid">
+        <!-- 待命区 -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:8px;">🟢 待命 (8)</div>
+          <div class="vehicle-list">
+            <div class="vehicle-card green">
+              <div class="plate">京A12345</div>
+              <div class="driver">赵师傅</div>
+              <div class="info">已休息 2h</div>
+              <span class="tag tag-green">🟢 空闲</span>
+            </div>
+            <div class="vehicle-card green">
+              <div class="plate">京A12346</div>
+              <div class="driver">王师傅</div>
+              <div class="info">空闲</div>
+              <span class="tag tag-green">🟢 推荐</span>
+            </div>
+            <div class="vehicle-card green">
+              <div class="plate">京A12347</div>
+              <div class="driver">刘师傅</div>
+              <div class="info">刚返回</div>
+              <span class="tag tag-yellow">🟡 需休息</span>
+            </div>
+          </div>
+        </div>
+        <!-- 在途区 -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:8px;">🟡 在途 (35)</div>
+          <div class="vehicle-list">
+            <div class="vehicle-card yellow">
+              <div class="plate">京B23456</div>
+              <div class="driver">李师傅</div>
+              <div class="info">深圳→北京 830km</div>
+              <span class="tag tag-yellow">预计 04/16 08:00</span>
+            </div>
+            <div class="vehicle-card yellow">
+              <div class="plate">京B23457</div>
+              <div class="driver">陈师傅</div>
+              <div class="info">上海→广州</div>
+              <span class="tag tag-yellow">预计 04/15 22:00</span>
+            </div>
+            <div class="vehicle-card yellow" style="border-left-color:var(--red);">
+              <div class="plate">京B23458</div>
+              <div class="driver">周师傅</div>
+              <div class="info">南京→武汉 ⚠️ 已超时</div>
+              <span class="tag tag-red">⚠️ 晚点 1.5h</span>
+            </div>
+          </div>
+        </div>
+        <!-- 维修区 -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:8px;">🔴 维修 (2)</div>
+          <div class="vehicle-list">
+            <div class="vehicle-card red">
+              <div class="plate">京C34567</div>
+              <div class="driver">张师傅</div>
+              <div class="info">陈厂长修理厂</div>
+              <span class="tag tag-red">预计 04/15 18:00</span>
+            </div>
+            <div class="vehicle-card red">
+              <div class="plate">京C34568</div>
+              <div class="driver">吴师傅</div>
+              <div class="info">刘厂长修理厂 · 变速箱维修</div>
+              <span class="tag tag-red">预计 04/16</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ====== CLEAN BROKEN OLD DATA ======
+  try {
+    const oldData = JSON.parse(localStorage.getItem('vf_pending_repairs') || '[]');
+    const fixed = oldData.map(function(r) {
+      if (r.status && r.status !== 'pending' && r.status !== 'approved' && r.status !== 'rejected') {
+        return { ...r, status: 'pending' };
+      }
+      return r;
+    });
+    localStorage.setItem('vf_pending_repairs', JSON.stringify(fixed));
+  } catch(e) { /* ignore */ }
+
+  // ====== ROUTING ======
+  const phoneFrame = document.getElementById('phone-frame');
+  const roleSelect = document.getElementById('role-select');
+  let currentRole = '';
+
+  function enterRole(role) {
+    currentRole = role;
+    roleSelect.style.display = 'none';
+    phoneFrame.classList.add('active');
+    if (role === 'driver') {
+      showScreen('screen-driver-home');
+    } else {
+      showScreen('screen-dispatcher');
+      renderPendingRepairs();
+    }
+  }
+
+  function switchRole() {
+    phoneFrame.classList.remove('active');
+    roleSelect.style.display = 'flex';
+    document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+    // Reset per-driver state
+    localStorage.removeItem('receipt_uploaded');
+  }
+
+  function goHome() {
+    if (currentRole === 'driver') goScreen('screen-driver-home');
+    else goScreen('screen-dispatcher');
+  }
+
+  function goScreen(id) {
+    document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    // If entering dispatcher, refresh pending repairs
+    if (id === 'screen-dispatcher') {
+      renderPendingRepairs();
+    }
+    if (id === 'screen-driver-maintenance') {
+      refreshDriverMaintenance();
+    }
+    if (id === 'screen-driver-maintenance-progress') {
+      refreshProgress();
+    }
+    if (id === 'screen-driver-home') {
+      updateReceiptStatusOnHome();
+    }
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    // If entering dispatcher, refresh pending repairs
+    if (id === 'screen-dispatcher') {
+      renderPendingRepairs();
+    }
+    if (id === 'screen-driver-maintenance') {
+      refreshDriverMaintenance();
+    }
+    if (id === 'screen-driver-maintenance-progress') {
+      refreshProgress();
+    }
+    if (id === 'screen-driver-home') {
+      updateReceiptStatusOnHome();
+    }
+  }
+
+  function updateReceiptStatusOnHome() {
+    const uploaded = localStorage.getItem('receipt_uploaded') === 'true';
+    const statusEl = document.getElementById('receipt-status');
+    if (statusEl) {
+      if (uploaded) {
+        statusEl.innerHTML = '✅ 已上传回单';
+        statusEl.style.color = 'var(--green)';
+      } else {
+        statusEl.innerHTML = '⏳ 未上传回单';
+        statusEl.style.color = 'var(--yellow)';
+      }
+    }
+  }
+
+  // ====== RECEIPT UPLOAD ======
+  function simulateTakePhoto() {
+    const placeholder = document.getElementById('photo-placeholder');
+    const img = document.getElementById('photo-img');
+    const takeBtn = document.getElementById('receipt-take-btn');
+    const nextBtn = document.getElementById('receipt-next-btn');
+    placeholder.style.display = 'none';
+    img.style.display = 'block';
+    // Use a generated placeholder
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, 400, 300);
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('📄 送货单照片', 200, 120);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('订单 V202603001 · 北京华为研究所', 200, 160);
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(30, 20, 340, 260);
+    img.src = canvas.toDataURL();
+
+    takeBtn.style.display = 'none';
+    nextBtn.style.display = 'block';
+
+    // Also set preview
+    setTimeout(() => {
+      const preview = document.getElementById('preview-img');
+      if (preview) preview.src = img.src;
+    }, 100);
+
+    showToast('📸 拍照成功！');
+  }
+
+  function submitReceipt() {
+    localStorage.setItem('receipt_uploaded', 'true');
+    showScreen('screen-driver-receipt-success');
+    showToast('✅ 回单已提交！');
+  }
+
+  // ====== SHARED MAINTENANCE STORE ======
+  function getPendingRepairs() {
+    try {
+      return JSON.parse(localStorage.getItem('vf_pending_repairs') || '[]');
+    } catch(e) { return []; }
+  }
+  function savePendingRepairs(list) {
+    localStorage.setItem('vf_pending_repairs', JSON.stringify(list));
+  }
+  function addPendingRepair(item) {
+    const list = getPendingRepairs();
+    item.id = 'R' + Date.now();
+    item.createdAt = Date.now();
+    list.unshift(item);
+    savePendingRepairs(list);
+    // Dispatch event so dispatcher can refresh if open
+    window.dispatchEvent(new CustomEvent('repair-updated'));
+  }
+  function removePendingRepair(id) {
+    const list = getPendingRepairs().filter(r => r.id !== id);
+    savePendingRepairs(list);
+    window.dispatchEvent(new CustomEvent('repair-updated'));
+  }
+
+  // ====== MAINTENANCE ======
+  let selectedCost = 'cost-2000';
+
+  function selectOption(el, id) {
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCost = id;
+  }
+
+  function simulateTakePhoto2() {
+    const placeholder = document.getElementById('photo2-placeholder');
+    const img = document.getElementById('photo2-img');
+    placeholder.style.display = 'none';
+    img.style.display = 'block';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fef2f2';
+    ctx.fillRect(0, 0, 400, 300);
+    ctx.fillStyle = '#991b1b';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔧 故障部位照片', 200, 140);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('发动机区域 · 气门异响', 200, 180);
+    img.src = canvas.toDataURL();
+
+    showToast('📸 故障照片已拍摄！');
+  }
+
+  function submitMaintenance() {
+    let label = '', level = '';
+    if (selectedCost === 'cost-500') { label = '¥500以下'; level = 'low'; }
+    else if (selectedCost === 'cost-2000') { label = '¥500~2000'; level = 'medium'; }
+    else if (selectedCost === 'cost-up') { label = '¥2,000以上'; level = 'high'; }
+    else if (selectedCost === 'cost-emergency') { label = '🚨 紧急情况'; level = 'emergency'; }
+
+    const hasPhoto = document.getElementById('photo2-img').style.display === 'block';
+    if (!hasPhoto) {
+      showToast('⚠️ 请先拍摄故障部位照片');
+      return;
+    }
+
+    // Save to shared store so dispatcher can see it
+    addPendingRepair({
+      plate: '京A12345',
+      driver: '赵师傅',
+      issue: '发动机异响',
+      location: 'G25长深高速·湖州服务区',
+      costLabel: label,
+      level: level,
+      time: new Date().toLocaleString('zh-CN', { hour12: false }),
+      status: 'pending'
+    });
+
+    showToast(`📤 已提交！审批等级：${label} · 等待王姐审批`);
+    setTimeout(() => goScreen('screen-driver-maintenance'), 300);
+  }
+
+  // ====== DISPATCHER ======
+  function renderPendingRepairs() {
+    const container = document.getElementById('pending-repairs-container');
+    if (!container) return;
+    const allRepairs = getPendingRepairs();
+    // Only show items still pending (not yet approved/rejected by dispatcher)
+    const pending = allRepairs.filter(r => !r.status || r.status === 'pending');
+    const done = allRepairs.filter(r => r.status && r.status !== 'pending');
+
+    // Update cross-role banner for latest pending item
+    const banner = document.getElementById('cross-role-banner');
+    const bannerText = document.getElementById('banner-text');
+    const latestPending = pending.length > 0 ? pending[0] : null;
+    if (latestPending) {
+      banner.style.display = 'block';
+      bannerText.textContent = latestPending.driver + '（' + latestPending.plate + '）提交了报修申请：' + latestPending.issue + ' · ' + latestPending.costLabel;
+      clearTimeout(window.bannerTimer);
+      window.bannerTimer = setTimeout(() => { if (banner) banner.style.display = 'none'; }, 8000);
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Build: pending items first, then already-processed items
+    let html = '';
+
+    if (pending.length === 0 && done.length === 0) {
+      html = '<div style="padding:16px;text-align:center;color:var(--text2);font-size:14px;">\u2705 暂无待处理维修审批</div>';
+    }
+
+    // Pending items (with approve/reject buttons)
+    for (let i = 0; i < pending.length; i++) {
+      const r = pending[i];
+      const borderColor = (r.level === 'emergency' || r.level === 'high') ? 'var(--red)' : 'var(--yellow)';
+      const badgeBg = (r.level === 'emergency' || r.level === 'high') ? '#fee2e2' : '#fef9c3';
+      const badgeColor = (r.level === 'emergency' || r.level === 'high') ? '#991b1b' : '#854d0e';
+      let badgeText = (r.level === 'emergency') ? '\ud83d\udea8 加急' : '待王姐';
+      if (r.level === 'high') badgeText = '待王姐 \u2192 李老板';
+      html += '<div class="card" style="border-left:3px solid ' + borderColor + ';">' +
+        '<div style="display:flex;justify-content:space-between;">' +
+          '<span style="font-weight:600;">\ud83d\udd27 ' + r.plate + ' ' + r.issue + '</span>' +
+          '<span class="status-badge" style="background:' + badgeBg + ';color:' + badgeColor + ';">' + badgeText + '</span>' +
+        '</div>' +
+        '<div style="font-size:13px;color:var(--text2);margin-top:4px;">' +
+          r.driver + ' \u00b7 ' + r.location + ' \u00b7 金额' + r.costLabel +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">提交时间：' + r.time + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:10px;">' +
+          '<button class="btn btn-sm btn-blue" style="width:auto;flex:1;" onclick="approveRepair(\'' + r.id + '\')">\u2705 通过</button>' +
+          '<button class="btn btn-sm btn-outline" style="width:auto;flex:1;" onclick="rejectRepair(\'' + r.id + '\')">\u274c 驳回</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Already processed items (status display only, no buttons)
+    for (let i = 0; i < done.length; i++) {
+      const r = done[i];
+      const isApproved = (r.status === 'approved');
+      const borderColor = isApproved ? 'var(--green)' : 'var(--red)';
+      const badgeBg = isApproved ? '#dcfce7' : '#fee2e2';
+      const badgeColor = isApproved ? '#166534' : '#991b1b';
+      const badgeIcon = isApproved ? '\u2705' : '\u274c';
+      const badgeLabel = isApproved ? '已通过' : '已驳回';
+      html += '<div class="card" style="border-left:3px solid ' + borderColor + ';opacity:0.7;">' +
+        '<div style="display:flex;justify-content:space-between;">' +
+          '<span style="font-weight:600;">\ud83d\udd27 ' + r.plate + ' ' + r.issue + '</span>' +
+          '<span class="status-badge" style="background:' + badgeBg + ';color:' + badgeColor + ';">' + badgeIcon + ' ' + badgeLabel + '</span>' +
+        '</div>' +
+        '<div style="font-size:13px;color:var(--text2);margin-top:4px;">' +
+          r.driver + ' \u00b7 ' + r.location + ' \u00b7 金额' + r.costLabel +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">' +
+          (isApproved ? '\u2705 已通过' : '\u274c 已驳回') + ' \u00b7 提交时间：' + r.time +
+        '</div>' +
+      '</div>';
+    }
+
+    // Show/hide the clear-processed button
+    const clearArea = document.getElementById('clear-processed-area');
+    if (clearArea) {
+      clearArea.style.display = done.length > 0 ? 'block' : 'none';
+    }
+
+    container.innerHTML = html;
+  }
+
+  function approveRepair(id) {
+    const all = getPendingRepairs();
+    const target = all.find(r => r.id === id);
+    const isHigh = target && target.level === 'high';
+    const statusText = isHigh ? '✅ 已通过，升级至李老板审批' : '✅ 已通过';
+    const list = all.map(r => {
+      if (r.id === id) {
+        return { ...r, status: 'approved', statusText: statusText, updatedAt: Date.now() };
+      }
+      return r;
+    });
+    savePendingRepairs(list);
+    window.dispatchEvent(new CustomEvent('repair-updated'));
+    renderPendingRepairs();
+    showToast(isHigh ? '✅ 已通过！已升级至李老板审批' : '✅ 已通过！等待报销打款');
+  }
+
+  function rejectRepair(id) {
+    const list = getPendingRepairs().map(r => {
+      if (r.id === id) {
+        return { ...r, status: 'rejected', statusText: '❌ 已驳回，请补充材料', updatedAt: Date.now() };
+      }
+      return r;
+    });
+    savePendingRepairs(list);
+    window.dispatchEvent(new CustomEvent('repair-updated'));
+    renderPendingRepairs();
+    showToast('❌ 已驳回，司机将收到通知');
+  }
+
+  function rejectRepair(id) {
+    const list = getPendingRepairs().map(r => {
+      if (r.id === id) {
+        return { ...r, status: 'rejected', statusText: '❌ 已驳回，请补充材料', updatedAt: Date.now() };
+      }
+      return r;
+    });
+    savePendingRepairs(list);
+    window.dispatchEvent(new CustomEvent('repair-updated'));
+    renderPendingRepairs();
+    showToast('❌ 已驳回，司机将收到通知');
+  }
+
+  function clearProcessedRepairs() {
+    const all = getPendingRepairs();
+    const remaining = all.filter(r => !r.status || r.status === 'pending');
+    savePendingRepairs(remaining);
+    renderPendingRepairs();
+    showToast('🧹 已清理所有已审核的记录');
+  }
+
+  // Get the latest repair for the current driver
+  function getMyLatestRepair() {
+    const repairs = getPendingRepairs();
+    if (repairs.length === 0) return null;
+    return repairs[0];
+  }
+
+  // Get status info based on repair state and level
+  function getStatusInfo(repair) {
+    const level = (repair.level || 'medium');
+    const isHigh = (level === 'high');
+    const isLow = (level === 'low');
+    const isEmergency = (level === 'emergency');
+
+    if (repair.status === 'rejected') {
+      return {
+        bg: '#fef2f2', border: '#fecaca',
+        badgeBg: '#fee2e2', badgeColor: '#991b1b',
+        badgeText: '❌ 已驳回',
+        detail: '王姐驳回了该申请。请重新提交报修，附上更清晰的故障照片。'
+      };
+    }
+    if (repair.status === 'approved') {
+      if (isHigh) {
+        return {
+          bg: '#fefce8', border: '#fde68a',
+          badgeBg: '#fef9c3', badgeColor: '#854d0e',
+          badgeText: '⏳ 已通过，等待李老板审批',
+          detail: '王姐已审批通过，已升级至李老板审批，请等待最终确认。'
+        };
+      } else {
+        return {
+          bg: '#f0fdf4', border: '#bbf7d0',
+          badgeBg: '#dcfce7', badgeColor: '#166534',
+          badgeText: '✅ 已通过',
+          detail: '王姐已审批通过' + (isLow ? '，已报销' : '，等待报销打款') + '。'
+        };
+      }
+    }
+    // pending
+    if (isHigh) {
+      return {
+        bg: '#fefce8', border: '#fde68a',
+        badgeBg: '#dbeafe', badgeColor: 'var(--blue)',
+        badgeText: '⏳ 等待王姐审批',
+        detail: '预计 15分钟内出结果'
+      };
+    }
+    if (isLow) {
+      return {
+        bg: '#f8fafc', border: '#e2e8f0',
+        badgeBg: '#dbeafe', badgeColor: 'var(--blue)',
+        badgeText: '⏳ 等待处理',
+        detail: '¥500以下自行处理，事后报销'
+      };
+    }
+    if (isEmergency) {
+      return {
+        bg: '#fef2f2', border: '#fecaca',
+        badgeBg: '#fee2e2', badgeColor: '#991b1b',
+        badgeText: '🚨 紧急处理中',
+        detail: '已自动通知王姐和李老板，15分钟内升级处理'
+      };
+    }
+    // medium default
+    return {
+      bg: '#fefce8', border: '#fde68a',
+      badgeBg: '#dbeafe', badgeColor: 'var(--blue)',
+      badgeText: '⏳ 等待王姐审批',
+      detail: '预计 15分钟内出结果'
+    };
+  }
+
+  // Refresh driver maintenance screens based on shared store
+  function refreshDriverMaintenance() {
+    const repair = getMyLatestRepair();
+    const statusCard = document.getElementById('driver-repair-status');
+    if (statusCard) {
+      if (repair) {
+        const info = getStatusInfo(repair);
+        const isRejected = (repair.status === 'rejected');
+        statusCard.innerHTML =
+          '<div style="font-weight:600;font-size:15px;">📋 当前报修</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px;">' +
+            '<span>' + repair.plate + ' · ' + repair.issue + '</span>' +
+            '<span class="status-badge" style="background:' + info.badgeBg + ';color:' + info.badgeColor + ';">' + info.badgeText + '</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-top:4px;">' +
+            '提交时间：' + (repair.time || '—') + ' · ' + (repair.location || '') + ' · 金额' + repair.costLabel +
+          '</div>' +
+          '<button class="btn btn-sm ' + (isRejected ? 'btn-red' : 'btn-outline') + '" style="margin-top:10px;" onclick="refreshProgress();goScreen(\'screen-driver-maintenance-progress\')">' +
+            (isRejected ? '📝 查看驳回原因' : '查看进度 \u2192') +
+          '</button>';
+        statusCard.style.background = info.bg;
+        statusCard.style.borderColor = info.border;
+      } else {
+        statusCard.innerHTML = '<div style="font-size:13px;color:var(--text2);">暂无报修记录，点击红色按钮报修</div>';
+        statusCard.style.background = '#f8fafc';
+        statusCard.style.borderColor = '#e2e8f0';
+      }
+    }
+
+    // History
+    const history = document.getElementById('driver-repair-history');
+    if (history) {
+      const allRepairs = getPendingRepairs();
+      if (allRepairs.length > 0) {
+        let html = '';
+        for (let i = 0; i < allRepairs.length; i++) {
+          const r = allRepairs[i];
+          let statusColor = 'var(--text2)', statusIcon = '\u23f3', statusLabel = '审核中';
+          if (r.status === 'approved') { statusColor = 'var(--green)'; statusIcon = '\u2705'; statusLabel = '已通过'; }
+          else if (r.status === 'rejected') { statusColor = 'var(--red)'; statusIcon = '\u274c'; statusLabel = '已驳回'; }
+          html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;">' +
+            '<span>' + (r.time || '').slice(0,10) + ' ' + r.issue + '</span>' +
+            '<span style="color:' + statusColor + ';">' + statusIcon + ' ' + statusLabel + '</span>' +
+          '</div>';
+        }
+        history.innerHTML = html + '<div style="padding-top:6px;font-size:12px;color:var(--text2);text-align:center;">仅显示最近报修记录</div>';
+      } else {
+        history.innerHTML = '<div style="color:var(--text2);padding:8px 0;">暂无历史记录</div>';
+      }
+    }
+  }
+
+  // Refresh progress screen with conditional stages
+  function refreshProgress() {
+    const repair = getMyLatestRepair();
+    const card = document.getElementById('driver-progress-card');
+    if (!card) return;
+
+    if (!repair) {
+      card.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);">暂无报修记录</div>';
+      return;
+    }
+
+    const isHigh = (repair.level === 'high');
+    const isLow = (repair.level === 'low');
+    const isMedium = (repair.level === 'medium' || !repair.level);
+    const isEmergency = (repair.level === 'emergency');
+    const isPending = (!repair.status || repair.status === 'pending');
+    const isApproved = (repair.status === 'approved');
+    const isRejected = (repair.status === 'rejected');
+    const info = getStatusInfo(repair);
+
+    // Build progress steps based on level and status
+    let steps = [];
+    let done = [];
+    let active = [];
+
+    if (isLow) {
+      // < 500: 已提交 → 处理中 → 已报销
+      steps = ['已提交', '处理中', '已报销'];
+      done = [true, false, false];
+      active = [false, false, false];
+      if (isPending) { done = [true]; active = [false, true, false]; }
+      if (isApproved) { done = [true, true, true]; }
+      if (isRejected) { done = [true, true]; active = [false, false, true]; }
+    } else if (isMedium) {
+      // 500~2000: 已提交 → 王姐审批 → 待报销
+      steps = ['已提交', '王姐审批', '待报销'];
+      done = [true, false, false];
+      active = [false, false, false];
+      if (isPending) { done = [true]; active = [false, true, false]; }
+      if (isApproved) { done = [true, true, true]; }
+      if (isRejected) { done = [true, true]; active = [false, false, true]; }
+    } else if (isHigh) {
+      // > 2000: 已提交 → 王姐审批 → 李老板审批 → 待报销
+      steps = ['已提交', '王姐审批', '李老板审批', '待报销'];
+      done = [true, false, false, false];
+      active = [false, false, false, false];
+      if (isPending) { done = [true]; active = [false, true, false, false]; }
+      if (isApproved) { done = [true, true]; active = [false, false, true, false]; }
+      if (isRejected) { done = [true, true]; active = [false, false, false, true]; }
+    } else if (isEmergency) {
+      // emergency: 已提交 → 🚨 紧急处理 → 待报销
+      steps = ['已提交', '🚨 紧急处理', '待报销'];
+      done = [true, false, false];
+      active = [false, false, false];
+      if (isPending) { done = [true]; active = [false, true, false]; }
+      if (isApproved) { done = [true, true, true]; }
+      if (isRejected) { done = [true, true]; active = [false, false, true]; }
+    }
+
+    // Build progress bar HTML
+    let progressHtml = '<div class="progress-bar">';
+    for (let i = 0; i < steps.length; i++) {
+      const cls = (done[i] ? 'done' : '') + (active[i] ? ' active' : '');
+      progressHtml += '<div class="progress-step ' + cls + '">' + steps[i] + '</div>';
+    }
+    progressHtml += '</div>';
+
+    const showUrgent = isPending && !isLow;
+
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<div>' +
+          '<div style="font-weight:600;">' + repair.plate + ' \u00b7 ' + repair.issue + '</div>' +
+          '<div style="font-size:12px;color:var(--text2);">报修时间：' + (repair.time || '\u2014') + '</div>' +
+          '<div style="font-size:12px;color:var(--text2);">金额级别：' + repair.costLabel + '</div>' +
+        '</div>' +
+      '</div>' +
+      progressHtml +
+      '<div style="margin-top:16px;font-size:14px;">' +
+        '<span class="status-badge" style="background:' + info.badgeBg + ';color:' + info.badgeColor + ';">' + info.badgeText + '</span>' +
+        '<div style="font-size:13px;color:var(--text2);margin-top:6px;">' + info.detail + '</div>' +
+      '</div>';
+
+    const urgentEl = document.getElementById('driver-progress-urgent');
+    if (urgentEl) {
+      urgentEl.style.display = showUrgent ? 'block' : 'none';
+    }
+  }
+
+  // Listen for repair updates
+  window.addEventListener('repair-updated', () => {
+    renderPendingRepairs();
+    updatePendingCount();
+    refreshDriverMaintenance();
+    // Flash notification if dispatcher is not currently visible
+    if (!document.getElementById('screen-dispatcher').classList.contains('active')) {
+      // Will show on next visit
+    }
+  });
+
+  function updatePendingCount() {
+    const repairCount = getPendingRepairs().filter(r => !r.status || r.status === 'pending').length;
+    const otherCount = 2; // 到货确认 + 超时预警
+    const total = repairCount + otherCount;
+    document.querySelectorAll('.disp-tab .count').forEach(el => {
+      el.textContent = total;
+    });
+    // Update header notification
+    const header = document.querySelector('.disp-header .title');
+    if (repairCount > 0) {
+      header.textContent = '🚛 极速车队 调度面板 🔴';
+    } else {
+      header.textContent = '🚛 极速车队 调度面板';
+    }
+  }
+
+  function switchBoard(id, tab) {
+    document.querySelectorAll('.board').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.disp-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  }
+
+  // ====== TOAST ======
+  let toastTimer;
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // ====== KEYBOARD NAV ======
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') goHome();
+  });
+</script>
+</body>
+</html>

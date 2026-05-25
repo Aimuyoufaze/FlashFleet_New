@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>调度端 — 极速车队</title>
+<link rel="stylesheet" href="/css/fleet.css">
+</head>
+<body class="page-dispatcher">
+
+<div class="container fade-up" style="padding-bottom:60px;">
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="logo">🚛 极速车队 <span style="font-weight:400;color:var(--text-secondary);font-size:14px;">调度面板</span></div>
+    <div class="flex items-center gap-12">
+      <span class="text-muted" style="font-size:13px;">王姐 · <span id="disp-date"></span></span>
+      <a href="/" class="btn btn-ghost btn-sm">切换角色</a>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stat-row" id="stats-row">
+    <div class="stat-card green">
+      <div class="stat-value" id="stat-idle">3</div>
+      <div class="stat-label">🟢 待命车辆</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-value" id="stat-transit">3</div>
+      <div class="stat-label">🟡 在途车辆</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-value" id="stat-repair">2</div>
+      <div class="stat-label">🔴 维修车辆</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-value" id="stat-pending">0</div>
+      <div class="stat-label">📋 待审批</div>
+    </div>
+    <div class="stat-card" style="border-color: var(--border-light);">
+      <div class="stat-value" style="color: var(--text-secondary);" id="stat-done">12</div>
+      <div class="stat-label">📦 今日完成</div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="banner banner-warning hidden" id="notification-banner">
+    🔔 <span id="banner-text"></span>
+  </div>
+
+  <!-- Repair Approvals -->
+  <div class="section-header">📋 待处理审批 <span class="text-muted" id="pending-count"></span></div>
+  <div id="pending-repairs"><div class="text-center text-muted" style="padding:24px;">暂无待处理审批</div></div>
+  <div id="processed-area" class="hidden mt-16">
+    <button class="btn btn-ghost btn-sm" onclick="clearProcessed()">🧹 清理已审核记录</button>
+  </div>
+
+  <!-- Vehicle Board -->
+  <div class="section-header mt-24">🚛 全部车辆</div>
+  <div class="tabs">
+    <div class="tab active" onclick="filterVehicles('all', this)">全部</div>
+    <div class="tab" onclick="filterVehicles('idle', this)">🟢 待命 <span class="count" id="count-idle">3</span></div>
+    <div class="tab" onclick="filterVehicles('transit', this)">🟡 在途 <span class="count" id="count-transit">3</span></div>
+    <div class="tab" onclick="filterVehicles('repair', this)">🔴 维修 <span class="count" id="count-repair">2</span></div>
+  </div>
+
+  <div class="vehicle-grid" id="vehicle-grid"></div>
+
+  <!-- Fixed Alerts -->
+  <div class="section-header mt-24">⚠️ 其他待处理</div>
+  <div class="card alert-blue mb-8">
+    <div class="flex justify-between items-center">
+      <div>
+        <div style="font-weight:600;">📦 京B23456 到货确认</div>
+        <div class="text-muted" style="font-size:12px;">等待收货方签收确认</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('已发送签收提醒')">提醒签收</button>
+    </div>
+  </div>
+  <div class="card alert-red">
+    <div class="flex justify-between items-center">
+      <div>
+        <div style="font-weight:600;">⏰ 京A12347 超时预警</div>
+        <div class="text-muted" style="font-size:12px;">预计 12:00 到达 · 已超时 2h</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('📞 联系刘师傅…')">联系司机</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DISPATCHER DASHBOARD
+// ═══════════════════════════════════════════
+const API = '';
+
+document.getElementById('disp-date').textContent = new Date().toLocaleDateString('zh-CN');
+
+let allVehicles = [];
+let allRepairs = [];
+let vehicleFilter = 'all';
+
+// ─── Toast ───
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── API ───
+async function api(url, opts = {}) {
+  const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  return res.json();
+}
+
+// ─── Load All ───
+async function loadAll() {
+  try {
+    const [vehicles, repairs, stats] = await Promise.all([
+      api('/api/vehicles'), api('/api/repairs'), api('/api/stats')
+    ]);
+    allVehicles = vehicles;
+    allRepairs = repairs;
+    updateStatsUI(stats);
+    updateCounts(vehicles);
+    renderVehicles(vehicles);
+    renderPendingRepairs(repairs);
+  } catch (e) {
+    console.error('Load error:', e);
+  }
+}
+
+// ─── Stats ───
+function updateStatsUI(stats) {
+  document.getElementById('stat-idle').textContent = stats.idle_count || 0;
+  document.getElementById('stat-transit').textContent = stats.transit_count || 0;
+  document.getElementById('stat-repair').textContent = stats.repair_count || 0;
+  document.getElementById('stat-pending').textContent = stats.pending_repairs || 0;
+  document.getElementById('stat-done').textContent = stats.completed_orders || 0;
+}
+
+function updateCounts(vehicles) {
+  document.getElementById('count-idle').textContent = vehicles.filter(v => v.status === 'idle').length;
+  document.getElementById('count-transit').textContent = vehicles.filter(v => v.status === 'transit').length;
+  document.getElementById('count-repair').textContent = vehicles.filter(v => v.status === 'repair').length;
+}
+
+// ─── Vehicle Grid ───
+function renderVehicles(vehicles) {
+  const grid = document.getElementById('vehicle-grid');
+  if (!vehicles.length) {
+    grid.innerHTML = '<div class="text-center text-muted" style="padding:24px;">暂无车辆</div>';
+    return;
+  }
+  grid.innerHTML = vehicles.map(v => {
+    const sc = v.status === 'idle' ? 'green' : v.status === 'transit' ? 'amber' : 'red';
+    const stLabel = v.status === 'idle' ? '待命' : v.status === 'transit' ? '在途' : '维修';
+    const stIcon = v.status === 'idle' ? '🟢' : v.status === 'transit' ? '🟡' : '🔴';
+    return `<div class="vehicle-card alert-${sc}" onclick="showToast('${v.plate} · ${v.driver_name} · ${stLabel}')">
+      <div class="v-plate">${v.plate}</div>
+      <div class="v-driver">${v.driver_name}</div>
+      <div class="v-info">
+        ${v.location || ''} ${v.destination ? '→ ' + v.destination : ''}
+      </div>
+      <div class="mt-8">
+        <span class="badge badge-${sc}">${stIcon} ${stLabel}</span>
+        ${v.eta ? `<span class="badge badge-amber" style="margin-left:4px;">ETA ${v.eta}</span>` : ''}
+        ${v.rest_hours > 0 ? `<span class="text-muted" style="font-size:11px;margin-left:4px;">休息 ${v.rest_hours}h</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterVehicles(status, tab) {
+  vehicleFilter = status;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  const vehicles = status === 'all' ? allVehicles : allVehicles.filter(v => v.status === status);
+  renderVehicles(vehicles);
+}
+
+// ─── Pending Repairs ───
+function renderPendingRepairs(repairs) {
+  const container = document.getElementById('pending-repairs');
+  const pending = repairs.filter(r => r.status === 'pending');
+  const done = repairs.filter(r => r.status !== 'pending');
+
+  document.getElementById('pending-count').textContent = pending.length ? `(${pending.length}项)` : '';
+  document.getElementById('processed-area').classList.toggle('hidden', done.length === 0);
+
+  // Notification banner
+  const banner = document.getElementById('notification-banner');
+  const bannerText = document.getElementById('banner-text');
+  if (pending.length > 0) {
+    const latest = pending[0];
+    banner.classList.remove('hidden');
+    bannerText.textContent = `${latest.driver_name}（${latest.plate}）提交了报修：${latest.issue} · ${latest.cost_label}`;
+    clearTimeout(window._bannerTimer);
+    window._bannerTimer = setTimeout(() => banner.classList.add('hidden'), 6000);
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  if (!pending.length && !done.length) {
+    container.innerHTML = '<div class="text-center text-muted" style="padding:24px;">暂无待处理审批</div>';
+    return;
+  }
+
+  let html = '';
+
+  pending.forEach(r => {
+    const urgent = r.cost_level === 'emergency' || r.cost_level === 'high';
+    const borderClass = urgent ? 'alert-red' : 'alert-amber';
+    html += `<div class="repair-item ${borderClass}">
+      <div class="repair-info">
+        <div class="repair-plate">🔧 ${r.plate}</div>
+        <div class="repair-detail">${r.driver_name} · ${r.location || '未知位置'}</div>
+        <div class="repair-detail">故障：${r.issue} · 金额：${r.cost_label} · ${r.created_at || ''}</div>
+      </div>
+      <div class="repair-actions">
+        <button class="btn btn-success btn-sm" onclick="approve('${r.id}')">✅ 通过</button>
+        <button class="btn btn-danger btn-sm" onclick="reject('${r.id}')">❌ 驳回</button>
+      </div>
+    </div>`;
+  });
+
+  done.forEach(r => {
+    const approved = r.status === 'approved';
+    const borderClass = approved ? 'alert-green' : 'alert-red';
+    const badgeClass = approved ? 'badge-green' : 'badge-red';
+    const label = approved ? '✅ 已通过' : '❌ 已驳回';
+    html += `<div class="repair-item ${borderClass}" style="opacity:0.6;">
+      <div class="repair-info">
+        <div class="repair-plate">🔧 ${r.plate}</div>
+        <div class="repair-detail">${r.driver_name} · ${r.issue} · ${r.cost_label}</div>
+        <div class="repair-detail"><span class="badge ${badgeClass}">${label}</span></div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+async function approve(id) {
+  try {
+    await api(`/api/repairs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'approved', approver: '王姐' }) });
+    showToast('✅ 已通过！');
+    loadAll();
+  } catch (e) { showToast('操作失败'); }
+}
+
+async function reject(id) {
+  try {
+    await api(`/api/repairs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'rejected', approver: '王姐', notes: '请补充材料' }) });
+    showToast('❌ 已驳回');
+    loadAll();
+  } catch (e) { showToast('操作失败'); }
+}
+
+async function clearProcessed() {
+  try {
+    // Remove all non-pending repairs
+    const toRemove = allRepairs.filter(r => r.status !== 'pending');
+    for (const r of toRemove) {
+      await api(`/api/repairs/${r.id}`, { method: 'DELETE' }).catch(() => {});
+    }
+    showToast('🧹 已清理');
+    loadAll();
+  } catch (e) { showToast('清理完成'); }
+}
+
+// ─── Poll for updates ───
+loadAll();
+setInterval(loadAll, 15000);
+</script>
+
+</body>
+</html>

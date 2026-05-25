@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>司机端 — 极速车队</title>
+<link rel="stylesheet" href="/css/fleet.css">
+</head>
+<body>
+
+<div class="driver-app fade-up">
+  <!-- Status Bar -->
+  <div class="status-bar-top">
+    <span id="clock">--:--</span>
+    <span id="vehicle-badge">京A12345</span>
+    <span>🔋 在线</span>
+    <a href="/" class="btn btn-ghost btn-sm">切换角色</a>
+  </div>
+
+  <!-- Dynamic Screens -->
+  <div id="app-root"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DRIVER APP STATE
+// ═══════════════════════════════════════════
+const API = '';
+const PLATE = '京A12345';
+const DRIVER = '赵师傅';
+
+const state = {
+  screen: 'home',
+  receiptPhoto: null,
+  repairPhoto: null,
+  repairCostLevel: 'medium',
+  repairCostLabel: '¥500~2000',
+  latestRepair: null,
+  receiptUploaded: false,
+};
+
+// ─── Clock ───
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+tick();
+setInterval(tick, 30000);
+
+// ─── Toast ───
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── API Helpers ───
+async function api(url, opts = {}) {
+  const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  return res.json();
+}
+
+// ─── RENDER ───
+function render() {
+  const root = document.getElementById('app-root');
+  switch (state.screen) {
+    case 'home': renderHome(root); break;
+    case 'receipt-photo': renderReceiptPhoto(root); break;
+    case 'receipt-confirm': renderReceiptConfirm(root); break;
+    case 'receipt-success': renderReceiptSuccess(root); break;
+    case 'maintenance': renderMaintenance(root); break;
+    case 'maintenance-report': renderMaintenanceReport(root); break;
+    case 'maintenance-progress': renderMaintenanceProgress(root); break;
+  }
+}
+
+// ══════════════════════ HOME ══════════════════════
+function renderHome(root) {
+  const receiptDone = state.receiptUploaded;
+  root.innerHTML = `
+    <div class="mt-16">
+      <div class="section-header">📦 当前任务</div>
+      <div class="card alert-blue mb-16">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-mono" style="font-size:14px;color:var(--text-secondary);">订单 V202603001</div>
+            <div style="font-size:16px;font-weight:600;">深圳 → 北京</div>
+          </div>
+          <span class="badge ${receiptDone ? 'badge-green' : 'badge-amber'}">
+            ${receiptDone ? '✅ 已上传回单' : '⏳ 待上传回单'}
+          </span>
+        </div>
+      </div>
+
+      <div class="big-action" onclick="navigate('receipt-photo')" style="${receiptDone ? 'opacity:0.5;' : ''}">
+        <div class="icon">📸</div>
+        <div class="label">回单拍照上传</div>
+        <div class="sub">${receiptDone ? '已完成' : '一键拍照，自动识别 — 无需填表'}</div>
+      </div>
+
+      <div class="fab-emergency" onclick="navigate('maintenance-report')">
+        <div class="icon">🔧</div>
+        <div class="label">一键报修</div>
+      </div>
+
+      <div class="flex gap-12 mt-24">
+        <button class="btn btn-ghost btn-sm flex-1" onclick="toast('📞 接通王姐中…')">📞 联系调度</button>
+        <button class="btn btn-ghost btn-sm flex-1" onclick="navigate('maintenance')">📋 维修记录</button>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════ RECEIPT PHOTO ══════════════════════
+function renderReceiptPhoto(root) {
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('home')">← 返回</button>
+      <span class="text-muted">1/3</span>
+    </div>
+
+    <div class="photo-zone" onclick="takeReceiptPhoto()" id="receipt-zone">
+      <div class="placeholder" id="receipt-placeholder">
+        <div class="icon">📸</div>
+        <div style="font-size:16px;font-weight:600;">点击拍摄回单</div>
+        <div style="font-size:13px;margin-top:4px;">将送货单平铺，确保光线充足</div>
+      </div>
+      <img id="receipt-preview" style="display:none;" src="" alt="回单">
+    </div>
+
+    <button class="btn btn-primary btn-block mt-16" onclick="takeReceiptPhoto()" id="btn-take-receipt">
+      📸 拍照
+    </button>
+    <button class="btn btn-success btn-block mt-12 hidden" id="btn-next-receipt" onclick="navigate('receipt-confirm')">
+      下一步 →
+    </button>
+  `;
+}
+
+function takeReceiptPhoto() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 400; canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1a1d27';
+  ctx.fillRect(0, 0, 400, 300);
+  ctx.fillStyle = '#e5e7eb';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📄 送货单', 200, 110);
+  ctx.fillText('订单 V202603001', 200, 140);
+  ctx.fillText('北京华为研究所', 200, 165);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText('2026-04-15 14:30', 200, 195);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 15, 360, 270);
+
+  const dataUrl = canvas.toDataURL();
+  state.receiptPhoto = dataUrl;
+  document.getElementById('receipt-placeholder').style.display = 'none';
+  const img = document.getElementById('receipt-preview');
+  img.src = dataUrl;
+  img.style.display = 'block';
+  document.getElementById('btn-take-receipt').classList.add('hidden');
+  document.getElementById('btn-next-receipt').classList.remove('hidden');
+  toast('📸 拍摄成功');
+}
+
+// ══════════════════════ RECEIPT CONFIRM ══════════════════════
+function renderReceiptConfirm(root) {
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('receipt-photo')">← 返回</button>
+      <span class="text-muted">2/3</span>
+    </div>
+
+    <div class="photo-zone" style="min-height:200px;">
+      <img src="${state.receiptPhoto || ''}" style="width:100%;height:100%;object-fit:cover;" alt="预览">
+    </div>
+
+    <div class="card alert-green mt-16">
+      <div style="font-size:14px;">✅ 已识别订单信息</div>
+      <div class="text-secondary mt-8" style="font-size:13px;">
+        V202603001 · 北京华为研究所 · 深圳→北京
+      </div>
+    </div>
+
+    <div class="flex gap-12 mt-16">
+      <button class="btn btn-ghost flex-1" onclick="navigate('receipt-photo')">📸 重拍</button>
+      <button class="btn btn-success flex-2" style="flex:2;" onclick="submitReceipt()">✅ 确认提交</button>
+    </div>
+  `;
+}
+
+async function submitReceipt() {
+  try {
+    await api('/api/receipts', {
+      method: 'POST',
+      body: JSON.stringify({
+        plate: PLATE, driver_name: DRIVER,
+        order_no: 'V202603001', customer: '北京华为研究所'
+      })
+    });
+  } catch (e) { /* offline ok */ }
+  state.receiptUploaded = true;
+  navigate('receipt-success');
+}
+
+function renderReceiptSuccess(root) {
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('home')">← 返回</button>
+      <span class="text-muted">3/3</span>
+    </div>
+    <div class="flex-col items-center text-center mt-24" style="display:flex;">
+      <div style="font-size:72px;">✅</div>
+      <h2 class="mt-16">回单已提交</h2>
+      <p class="text-secondary mt-8">订单 V202603001 · 状态：待审核</p>
+      <div class="card alert-blue mt-24" style="width:100%;">
+        <div class="flex items-center gap-8" style="font-size:14px;">
+          <span>⏱</span><span>预计 2 小时内完成审核</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block mt-24" onclick="navigate('home')">返回首页</button>
+    </div>
+  `;
+}
+
+// ══════════════════════ MAINTENANCE LIST ══════════════════════
+async function renderMaintenance(root) {
+  let repairs = [];
+  try { repairs = await api('/api/repairs'); } catch (e) {}
+
+  const rows = repairs.length ? repairs.map(r => {
+    const sc = r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'amber';
+    const st = r.status === 'approved' ? '✅ 已通过' : r.status === 'rejected' ? '❌ 已驳回' : '⏳ 审核中';
+    return `<div class="card alert-${sc} mb-8">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="text-mono" style="font-weight:600;">${r.plate} · ${r.issue}</div>
+          <div class="text-muted" style="font-size:12px;">${r.created_at || ''} · ${r.cost_label || ''}</div>
+        </div>
+        <span class="badge badge-${sc}">${st}</span>
+      </div>
+    </div>`;
+  }).join('') : '<div class="text-center text-muted mt-24">暂无报修记录</div>';
+
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('home')">← 返回</button>
+      <span>维修报销</span>
+      <span></span>
+    </div>
+    <div class="section-header">📜 报修记录</div>
+    ${rows}
+    <div class="fab-emergency" style="width:120px;height:120px;" onclick="navigate('maintenance-report')">
+      <div class="icon" style="font-size:32px;">🔧</div>
+      <div class="label" style="font-size:14px;">报修</div>
+    </div>
+  `;
+}
+
+// ══════════════════════ MAINTENANCE REPORT ══════════════════════
+function renderMaintenanceReport(root) {
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('maintenance')">← 返回</button>
+      <span>一键报修</span>
+      <span></span>
+    </div>
+
+    <div class="card alert-blue mb-16">
+      <div class="flex items-center gap-8" style="font-size:14px;">
+        <span>📍</span><span>自动定位：G25 长深高速 · 湖州服务区</span>
+      </div>
+    </div>
+
+    <div class="photo-zone" style="min-height:180px;" onclick="takeRepairPhoto()" id="repair-zone">
+      <div class="placeholder" id="repair-placeholder">
+        <div class="icon">📸</div>
+        <div style="font-size:16px;font-weight:600;">拍摄故障部位（必填）</div>
+      </div>
+      <img id="repair-preview" style="display:none;" src="" alt="故障">
+    </div>
+
+    <div class="card mt-16">
+      <div class="section-header">📊 预判金额</div>
+      <div class="option-group" id="cost-options">
+        ${costOptions()}
+      </div>
+    </div>
+
+    <button class="btn btn-danger btn-lg btn-block mt-24" onclick="submitRepair()">📤 提交报修</button>
+  `;
+}
+
+function costOptions() {
+  const levels = [
+    { id: 'low', label: '¥500 以下', desc: '自行处理，事后报销' },
+    { id: 'medium', label: '¥500 ~ 2,000', desc: '王姐审批（需照片+定位）', sel: true },
+    { id: 'high', label: '¥2,000 以上', desc: '王姐 → 李老板，两级审批' },
+    { id: 'emergency', label: '🚨 紧急情况', desc: '高速爆胎等 · 先修后补 · 15分钟升级' },
+  ];
+  return levels.map(l => `
+    <div class="option-item ${l.sel ? 'selected' : ''}" onclick="selectCost('${l.id}', this)" data-cost="${l.id}">
+      <div class="radio"></div>
+      <div>
+        <div class="opt-title" style="${l.id === 'emergency' ? 'color:var(--red);' : ''}">${l.label}</div>
+        <div class="opt-desc">${l.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectCost(id, el) {
+  state.repairCostLevel = id;
+  const labels = { low: '¥500以下', medium: '¥500~2000', high: '¥2,000以上', emergency: '🚨 紧急情况' };
+  state.repairCostLabel = labels[id];
+  document.querySelectorAll('#cost-options .option-item').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function takeRepairPhoto() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 400; canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1a0a0a';
+  ctx.fillRect(0, 0, 400, 300);
+  ctx.fillStyle = '#ef4444';
+  ctx.font = '18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🔧 故障部位', 200, 130);
+  ctx.fillText('发动机区域 · 气门异响', 200, 160);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText('2026-04-15 14:35 · G25长深高速', 200, 190);
+
+  state.repairPhoto = canvas.toDataURL();
+  document.getElementById('repair-placeholder').style.display = 'none';
+  const img = document.getElementById('repair-preview');
+  img.src = state.repairPhoto;
+  img.style.display = 'block';
+  toast('📸 故障照片已拍摄');
+}
+
+async function submitRepair() {
+  if (!state.repairPhoto) { toast('⚠️ 请先拍摄故障部位'); return; }
+  try {
+    const res = await api('/api/repairs', {
+      method: 'POST',
+      body: JSON.stringify({
+        plate: PLATE, driver_name: DRIVER,
+        issue: '发动机异响', location: 'G25长深高速·湖州服务区',
+        cost_level: state.repairCostLevel, cost_label: state.repairCostLabel
+      })
+    });
+    state.latestRepair = res;
+    toast('📤 已提交！等待王姐审批');
+  } catch (e) { toast('📤 已提交（离线模式）'); }
+  setTimeout(() => navigate('maintenance'), 500);
+}
+
+// ══════════════════════ MAINTENANCE PROGRESS ══════════════════════
+async function renderMaintenanceProgress(root) {
+  let repair = state.latestRepair;
+  if (!repair) {
+    try { const repairs = await api('/api/repairs'); repair = repairs[0]; } catch (e) {}
+  }
+
+  if (!repair) {
+    root.innerHTML = `<div class="top-bar"><button class="btn btn-ghost btn-sm" onclick="navigate('maintenance')">← 返回</button><span>报销进度</span><span></span></div>
+      <div class="text-center text-muted mt-24">暂无报修记录</div>`;
+    return;
+  }
+
+  const isPending = repair.status === 'pending';
+  const isApproved = repair.status === 'approved';
+  const isRejected = repair.status === 'rejected';
+  const isHigh = repair.cost_level === 'high';
+  const isEmergency = repair.cost_level === 'emergency';
+  const isLow = repair.cost_level === 'low';
+
+  let steps = [];
+  if (isLow) steps = ['已提交', '处理中', '已报销'];
+  else if (isHigh) steps = ['已提交', '王姐审批', '李老板审批', '待报销'];
+  else if (isEmergency) steps = ['已提交', '🚨 紧急处理', '待报销'];
+  else steps = ['已提交', '王姐审批', '待报销'];
+
+  let doneIdx = isApproved ? steps.length : isRejected ? 1 : 1;
+  let activeIdx = isRejected ? steps.length - 1 : (isApproved ? -1 : doneIdx);
+
+  const stepsHtml = steps.map((s, i) => {
+    let cls = '';
+    if (i < doneIdx) cls = 'done';
+    else if (i === activeIdx) cls = isRejected ? 'rejected' : 'active';
+    return `<div class="progress-step ${cls}">${s}</div>`;
+  }).join('');
+
+  const statusInfo = isApproved ? { bg: 'alert-green', badge: 'badge-green', text: '✅ 已通过', detail: isHigh ? '等待李老板最终审批' : '等待报销打款' }
+    : isRejected ? { bg: 'alert-red', badge: 'badge-red', text: '❌ 已驳回', detail: '请补充故障照片后重新提交' }
+    : { bg: 'alert-amber', badge: 'badge-blue', text: '⏳ 等待审批', detail: isEmergency ? '15分钟内自动升级处理' : '预计 15 分钟内出结果' };
+
+  root.innerHTML = `
+    <div class="top-bar">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('maintenance')">← 返回</button>
+      <span>报销进度</span>
+      <span></span>
+    </div>
+    <div class="card ${statusInfo.bg} mb-16">
+      <div class="text-mono" style="font-weight:600;">${repair.plate} · ${repair.issue}</div>
+      <div class="text-muted" style="font-size:12px;">${repair.location || ''} · ${repair.cost_label || ''}</div>
+    </div>
+    <div class="card mb-16">
+      <div class="progress-steps">${stepsHtml}</div>
+    </div>
+    <div class="card ${statusInfo.bg}">
+      <span class="badge ${statusInfo.badge}">${statusInfo.text}</span>
+      <div class="text-secondary mt-8" style="font-size:13px;">${statusInfo.detail}</div>
+    </div>
+    ${isPending && !isLow ? `<div class="card alert-red mt-16"><div style="font-weight:600;color:var(--red);">⏰ 需要加急？</div><div class="text-secondary mt-4" style="font-size:13px;">联系李老板紧急处理</div><button class="btn btn-danger btn-sm mt-8" onclick="toast('📞 接通李老板…')">📞 一键呼叫</button></div>` : ''}
+    <button class="btn btn-ghost btn-block mt-16" onclick="navigate('maintenance')">返回</button>
+  `;
+}
+
+// ══════════════════════ NAVIGATION ══════════════════════
+function navigate(screen) {
+  state.screen = screen;
+  render();
+  window.scrollTo(0, 0);
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
