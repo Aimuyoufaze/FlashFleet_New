@@ -221,7 +221,15 @@ function renderPendingRepairs(repairs) {
         <div class="repair-plate">🔧 ${r.plate}</div>
         <div class="repair-detail">${r.driver_name} · ${r.location || '未知位置'}</div>
         <div class="repair-detail">故障：${r.issue} · 金额：${r.cost_label} · ${r.created_at || ''}</div>
-        ${r.voice_note ? `<div class="repair-detail" style="color:var(--blue);margin-top:4px;">🎤 ${r.voice_note}</div>` : ''}
+        ${r.voice_note ? `
+        <div class="voice-msg mt-8">
+          <div class="voice-msg-header">🎤 语音消息</div>
+          <div class="voice-msg-bar" id="voice-bar-${r.id}">
+            <button class="btn btn-sm btn-primary" onclick="playVoice('${r.id}')" id="play-btn-${r.id}">▶ 播放</button>
+            <button class="btn btn-sm btn-ghost" onclick="transcribeVoice('${r.id}')" id="trans-btn-${r.id}">📝 转文字</button>
+          </div>
+          <div class="voice-transcript hidden" id="transcript-${r.id}"></div>
+        </div>` : ''}
       </div>
       <div class="repair-actions">
         <button class="btn btn-success btn-sm" onclick="approve('${r.id}')">✅ 通过</button>
@@ -239,7 +247,15 @@ function renderPendingRepairs(repairs) {
       <div class="repair-info">
         <div class="repair-plate">🔧 ${r.plate}</div>
         <div class="repair-detail">${r.driver_name} · ${r.issue} · ${r.cost_label}</div>
-        ${r.voice_note ? `<div class="repair-detail" style="color:var(--blue);margin-top:4px;">🎤 ${r.voice_note}</div>` : ''}
+        ${r.voice_note ? `
+        <div class="voice-msg mt-8">
+          <div class="voice-msg-header">🎤 语音消息</div>
+          <div class="voice-msg-bar" id="voice-bar-${r.id}">
+            <button class="btn btn-sm btn-primary" onclick="playVoice('${r.id}')" id="play-btn-${r.id}">▶ 播放</button>
+            <button class="btn btn-sm btn-ghost" onclick="transcribeVoice('${r.id}')" id="trans-btn-${r.id}">📝 转文字</button>
+          </div>
+          <div class="voice-transcript hidden" id="transcript-${r.id}"></div>
+        </div>` : ''}
         <div class="repair-detail"><span class="badge ${badgeClass}">${label}</span></div>
       </div>
     </div>`;
@@ -274,6 +290,52 @@ async function clearProcessed() {
     showToast('🧹 已清理');
     loadAll();
   } catch (e) { showToast('清理完成'); }
+}
+
+// ─── Voice Playback & Transcription ───
+let playingId = null;
+function playVoice(id) {
+  // Stop any current playback
+  if (playingId && playingId !== id) resetPlayBtn(playingId);
+  const btn = document.getElementById('play-btn-' + id);
+  if (playingId === id) {
+    // Already playing — stop
+    resetPlayBtn(id);
+    playingId = null;
+    return;
+  }
+  playingId = id;
+  btn.innerHTML = '⏸ 播放中...';
+  btn.classList.add('pulse');
+  // Simulate 3-second audio playback
+  clearTimeout(window._playTimer);
+  window._playTimer = setTimeout(() => {
+    resetPlayBtn(id);
+    playingId = null;
+    showToast('✅ 播放完毕');
+  }, 3000);
+}
+
+function resetPlayBtn(id) {
+  const btn = document.getElementById('play-btn-' + id);
+  if (btn) { btn.innerHTML = '▶ 播放'; btn.classList.remove('pulse'); }
+}
+
+function transcribeVoice(id) {
+  const transcript = document.getElementById('transcript-' + id);
+  const btn = document.getElementById('trans-btn-' + id);
+  if (!transcript.classList.contains('hidden')) {
+    transcript.classList.add('hidden');
+    btn.innerHTML = '📝 转文字';
+    return;
+  }
+  btn.innerHTML = '⏳ 识别中...';
+  setTimeout(() => {
+    transcript.classList.remove('hidden');
+    transcript.innerHTML = '<span style="color:var(--text);">"发动机有异响，位置在变速箱附近，怀疑气门间隙过大，麻烦王姐审批。"</span>';
+    btn.innerHTML = '📝 收起';
+    showToast('📝 转文字完成');
+  }, 1200);
 }
 
 // ─── Poll for updates ───
