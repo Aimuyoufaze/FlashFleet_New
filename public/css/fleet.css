@@ -52,6 +52,7 @@ body::before {
   .stat-row { grid-template-columns: repeat(2, 1fr); }
   .role-card { width: 160px; padding: 28px 20px; }
   .role-card .icon { font-size: 40px; }
+  .role-card .icon-img { width: 64px; height: 64px; }
   .landing h1 { font-size: 28px; }
 }
 
@@ -221,6 +222,7 @@ h3 { font-size: 16px; font-weight: 600; }
   box-shadow: 0 16px 40px rgba(0,0,0,.08);
 }
 .role-card .icon { font-size: 56px; margin-bottom: 20px; }
+.role-card .icon-img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 8px; }
 .role-card h2 { font-size: 22px; margin-bottom: 8px; }
 .role-card p { font-size: 14px; color: var(--text-secondary); }
 .role-card.driver:hover { border-color: var(--green); box-shadow: 0 16px 40px rgba(93, 138, 78, 0.12); }
@@ -390,6 +392,7 @@ h3 { font-size: 16px; font-weight: 600; }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
   .role-card { width: 160px; padding: 28px 20px; }
   .role-card .icon { font-size: 40px; }
+  .role-card .icon-img { width: 64px; height: 64px; }
   .landing h1 { font-size: 28px; }
 }
 

@@ -33,6 +33,7 @@
   }
   .role-card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
   .role-card .icon { font-size: 48px; margin-bottom: 16px; }
+  .role-card .icon-img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 8px; }
   .role-card h3 { font-size: 20px; margin-bottom: 6px; }
   .role-card p { font-size: 13px; color: var(--text2); }
   .badge-role { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; color: #fff; margin-top: 12px; }
@@ -273,13 +274,13 @@
   <p>请选择角色进入原型体验</p>
   <div class="role-grid">
     <div class="role-card" onclick="enterRole('driver')">
-      <div class="icon">🧑‍🔧</div>
+      <div class="icon"><img src="public/assets/flash-fleet-driver.png" alt="司机端" class="icon-img"></div>
       <h3>司机端</h3>
       <p>回单上传 · 维修报销</p>
       <span class="badge-role" style="background:var(--green)">赵师傅视角</span>
     </div>
     <div class="role-card" onclick="enterRole('dispatcher')">
-      <div class="icon">👩‍💻</div>
+      <div class="icon"><img src="public/assets/flash-fleet-dispatch.png" alt="调度端" class="icon-img"></div>
       <h3>调度端</h3>
       <p>车辆看板 · 状态管理</p>
       <span class="badge-role" style="background:var(--blue)">王姐视角</span>
