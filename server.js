@@ -140,6 +140,49 @@ app.post('/api/receipts', upload.single('photo'), (req, res) => {
   res.status(201).json(row);
 });
 
+// ─── ORDERS ───
+app.get('/api/orders', (req, res) => {
+  const { status } = req.query;
+  let rows;
+  if (status) {
+    rows = db.prepare('SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC').all(status);
+  } else {
+    rows = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
+  }
+  res.json(rows);
+});
+
+app.post('/api/orders/:id/assign', (req, res) => {
+  const { plate, driver_name } = req.body;
+  // Assign order to vehicle
+  db.prepare(`UPDATE orders SET vehicle_id = (SELECT id FROM vehicles WHERE plate = ?), plate = ?, driver_name = ?, status = 'assigned', updated_at = datetime('now','localtime') WHERE id = ?`)
+    .run(plate, plate, driver_name, req.params.id);
+  // Update vehicle status to transit
+  db.prepare(`UPDATE vehicles SET status = 'transit', destination = (SELECT destination FROM orders WHERE id = ?), cargo = (SELECT cargo FROM orders WHERE id = ?), updated_at = datetime('now','localtime') WHERE plate = ?`)
+    .run(req.params.id, req.params.id, plate);
+  updateStats();
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  res.json(order);
+});
+
+app.put('/api/orders/:id', (req, res) => {
+  const { status } = req.body;
+  db.prepare(`UPDATE orders SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`)
+    .run(status, req.params.id);
+  if (status === 'completed') {
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    if (order && order.plate) {
+      db.prepare(`UPDATE vehicles SET status = 'idle', destination = NULL, cargo = NULL, updated_at = datetime('now','localtime') WHERE plate = ?`).run(order.plate);
+    }
+    // Increment completed orders in stats
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare(`UPDATE stats SET completed_orders = completed_orders + 1 WHERE date = ?`).run(today);
+  }
+  updateStats();
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  res.json(order);
+});
+
 // ─── STATS ───
 app.get('/api/stats', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);

@@ -396,6 +396,45 @@ h3 { font-size: 16px; font-weight: 600; }
   .landing h1 { font-size: 28px; }
 }
 
+/* ═══ MODAL ═══ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; backdrop-filter: blur(4px);
+}
+.modal-overlay.hidden { display: none; }
+.modal-card {
+  background: var(--card); border-radius: 16px; padding: 24px;
+  width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: fadeIn .2s ease;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.modal-title { font-size: 18px; font-weight: 700; }
+
+/* ═══ OPTION ITEM (for assign dialog) ═══ */
+.option-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border: 1.5px solid var(--border-light); border-radius: 10px;
+  cursor: pointer; transition: border-color .15s; margin-bottom: 8px;
+}
+.option-item:hover { border-color: var(--blue); }
+.option-item.selected { border-color: var(--blue); background: #eff6ff; }
+.option-item .radio {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border-light);
+  display: flex; align-items: center; justify-content: center;
+}
+.option-item.selected .radio { border-color: var(--blue); }
+.option-item.selected .radio::after {
+  content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--blue);
+}
+.opt-title { font-size: 14px; font-weight: 600; }
+.opt-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
 @media (max-width: 480px) {
   .vehicle-grid { grid-template-columns: 1fr; }
   .stat-row { grid-template-columns: 1fr 1fr; }

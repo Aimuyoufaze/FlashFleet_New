@@ -55,6 +55,27 @@
     <button class="btn btn-ghost btn-sm" onclick="clearProcessed()">🧹 清理已审核记录</button>
   </div>
 
+  <!-- Order Assignment Panel -->
+  <div class="section-header mt-24">📦 待派订单 <span class="text-muted" id="pending-orders-count"></span></div>
+  <div id="pending-orders"><div class="text-center text-muted" style="padding:24px;">暂无待派订单</div></div>
+
+  <!-- Assignment Dialog (hidden by default) -->
+  <div class="modal-overlay hidden" id="assign-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">📦 派单给 <span id="assign-driver-name"></span></span>
+        <button class="btn btn-ghost btn-sm" onclick="closeAssignModal()">✕</button>
+      </div>
+      <div class="text-muted" style="font-size:13px;margin-bottom:12px;" id="assign-vehicle-info"></div>
+      <div class="section-header" style="font-size:13px;">选择订单</div>
+      <div id="assign-order-list" class="mb-16"></div>
+      <div class="flex gap-12">
+        <button class="btn btn-ghost flex-1" onclick="closeAssignModal()">取消</button>
+        <button class="btn btn-primary flex-2" style="flex:2;" id="btn-confirm-assign" disabled onclick="confirmAssign()">确认派单</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Vehicle Board -->
   <div class="section-header mt-24">🚛 全部车辆</div>
   <div class="tabs">
@@ -161,7 +182,7 @@ function renderVehicles(vehicles) {
     const sc = v.status === 'idle' ? 'green' : v.status === 'transit' ? 'amber' : 'red';
     const stLabel = v.status === 'idle' ? '待命' : v.status === 'transit' ? '在途' : '维修';
     const stIcon = v.status === 'idle' ? '🟢' : v.status === 'transit' ? '🟡' : '🔴';
-    return `<div class="vehicle-card alert-${sc}" onclick="showToast('${v.plate} · ${v.driver_name} · ${stLabel}')">
+    return `<div class="vehicle-card alert-${sc}" onclick="${v.status === 'idle' ? `openAssignModal('${v.plate}', '${v.driver_name}', '${v.location || ''}')` : `showToast('${v.plate} · ${v.driver_name} · ${stLabel}')`}">
       <div class="v-plate">${v.plate}</div>
       <div class="v-driver">${v.driver_name}</div>
       <div class="v-info">
@@ -338,9 +359,102 @@ function transcribeVoice(id) {
   }, 1200);
 }
 
+// ─── Order Assignment ───
+let pendingOrders = [];
+let assignTarget = { plate: '', driver_name: '' };
+let selectedOrderId = null;
+
+async function loadOrders() {
+  try {
+    const allOrders = await api('/api/orders');
+    pendingOrders = allOrders.filter(o => o.status === 'pending');
+    renderPendingOrders();
+  } catch (e) {}
+}
+
+function renderPendingOrders() {
+  const container = document.getElementById('pending-orders');
+  document.getElementById('pending-orders-count').textContent = pendingOrders.length ? `(${pendingOrders.length}单)` : '';
+
+  if (!pendingOrders.length) {
+    container.innerHTML = '<div class="text-center text-muted" style="padding:24px;">✅ 暂无待派订单</div>';
+    return;
+  }
+
+  container.innerHTML = pendingOrders.map(o => `
+    <div class="card alert-blue mb-8" style="cursor:pointer;" onclick="quickAssignHint('${o.order_no}')">
+      <div class="flex justify-between items-center">
+        <div>
+          <div style="font-weight:600;">${o.order_no}</div>
+          <div class="text-muted" style="font-size:13px;">${o.origin} → ${o.destination} · ${o.cargo} · ¥${o.value.toLocaleString()}</div>
+          <div class="text-muted" style="font-size:12px;">${o.customer || ''}</div>
+        </div>
+        <span class="badge badge-blue">待派单</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function quickAssignHint(orderNo) {
+  showToast('💡 点击左侧待命车辆卡片即可派单');
+}
+
+function openAssignModal(plate, driverName, location) {
+  assignTarget = { plate, driver_name: driverName };
+  selectedOrderId = null;
+  document.getElementById('assign-driver-name').textContent = driverName;
+  document.getElementById('assign-vehicle-info').textContent = `${plate} · ${location} · 待命`;
+  document.getElementById('btn-confirm-assign').disabled = true;
+
+  const list = document.getElementById('assign-order-list');
+  if (!pendingOrders.length) {
+    list.innerHTML = '<div class="text-center text-muted" style="padding:16px;">暂无可用订单</div>';
+  } else {
+    list.innerHTML = pendingOrders.map(o => `
+      <div class="option-item" onclick="selectAssignOrder('${o.id}', this)" data-oid="${o.id}">
+        <div class="radio"></div>
+        <div>
+          <div class="opt-title">${o.order_no} · ${o.origin} → ${o.destination}</div>
+          <div class="opt-desc">${o.cargo} · ¥${o.value.toLocaleString()} · ${o.customer}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('assign-modal').classList.remove('hidden');
+}
+
+function selectAssignOrder(id, el) {
+  selectedOrderId = id;
+  document.querySelectorAll('#assign-order-list .option-item').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-confirm-assign').disabled = false;
+}
+
+function closeAssignModal() {
+  document.getElementById('assign-modal').classList.add('hidden');
+  assignTarget = { plate: '', driver_name: '' };
+  selectedOrderId = null;
+}
+
+async function confirmAssign() {
+  if (!selectedOrderId) return;
+  try {
+    await api(`/api/orders/${selectedOrderId}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ plate: assignTarget.plate, driver_name: assignTarget.driver_name })
+    });
+    showToast(`✅ 已派单：${assignTarget.driver_name} → 新任务`);
+    closeAssignModal();
+    loadAll();
+    loadOrders();
+  } catch (e) { showToast('派单失败，请重试'); }
+}
+
 // ─── Poll for updates ───
 loadAll();
+loadOrders();
 setInterval(loadAll, 15000);
+setInterval(loadOrders, 15000);
 </script>
 
 </body>

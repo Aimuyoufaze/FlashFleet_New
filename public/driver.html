@@ -82,27 +82,51 @@ function render() {
 }
 
 // ══════════════════════ HOME ══════════════════════
+let currentOrder = null;
+
+async function loadCurrentOrder() {
+  try {
+    const orders = await api('/api/orders');
+    currentOrder = orders.find(o => o.status === 'assigned' && o.plate === PLATE) || null;
+    if (currentOrder) {
+      state.receiptUploaded = false; // Reset for new order
+    }
+  } catch (e) { currentOrder = null; }
+  render();
+}
+
 function renderHome(root) {
   const receiptDone = state.receiptUploaded;
+  const orderHtml = currentOrder ? `
+    <div class="card alert-blue mb-16">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="text-mono" style="font-size:14px;color:var(--text-secondary);">订单 ${currentOrder.order_no}</div>
+          <div style="font-size:16px;font-weight:600;">${currentOrder.origin} → ${currentOrder.destination}</div>
+          <div style="font-size:13px;color:var(--text2);">📦 ${currentOrder.cargo} · ¥${currentOrder.value?.toLocaleString()}</div>
+        </div>
+        <span class="badge ${receiptDone ? 'badge-green' : 'badge-amber'}">
+          ${receiptDone ? '✅ 已上传回单' : '⏳ 待上传回单'}
+        </span>
+      </div>
+    </div>
+  ` : `
+    <div class="card alert-amber mb-16">
+      <div class="text-center text-muted" style="padding:8px;">
+        📭 暂无指派订单，请联系调度员王姐派单
+      </div>
+    </div>
+  `;
+
   root.innerHTML = `
     <div class="mt-16">
       <div class="section-header">📦 当前任务</div>
-      <div class="card alert-blue mb-16">
-        <div class="flex justify-between items-center">
-          <div>
-            <div class="text-mono" style="font-size:14px;color:var(--text-secondary);">订单 V202603001</div>
-            <div style="font-size:16px;font-weight:600;">深圳 → 北京</div>
-          </div>
-          <span class="badge ${receiptDone ? 'badge-green' : 'badge-amber'}">
-            ${receiptDone ? '✅ 已上传回单' : '⏳ 待上传回单'}
-          </span>
-        </div>
-      </div>
+      ${orderHtml}
 
-      <div class="big-action" onclick="navigate('receipt-photo')" style="${receiptDone ? 'opacity:0.5;' : ''}">
+      <div class="big-action" onclick="navigate('receipt-photo')" style="${receiptDone || !currentOrder ? 'opacity:0.5;' : ''}">
         <div class="icon">📸</div>
         <div class="label">回单拍照上传</div>
-        <div class="sub">${receiptDone ? '已完成' : '一键拍照，自动识别 — 无需填表'}</div>
+        <div class="sub">${receiptDone ? '已完成' : !currentOrder ? '暂无订单' : '一键拍照，自动识别 — 无需填表'}</div>
       </div>
 
       <div class="fab-emergency" onclick="navigate('maintenance-report')">
@@ -232,7 +256,7 @@ function renderReceiptConfirm(root) {
     <div class="card alert-green mt-16">
       <div style="font-size:14px;">✅ 已识别订单信息</div>
       <div class="text-secondary mt-8" style="font-size:13px;">
-        V202603001 · 北京华为研究所 · 深圳→北京
+        ${currentOrder ? `${currentOrder.order_no} · ${currentOrder.customer || ''} · ${currentOrder.origin}→${currentOrder.destination}` : 'V202603001 · 北京华为研究所 · 深圳→北京'}
       </div>
       ${state.receiptVoiceNote ? `<div class="mt-8" style="font-size:12px;color:var(--green);">🎤 ${state.receiptVoiceNote}</div>` : ''}
     </div>
@@ -250,11 +274,17 @@ async function submitReceipt() {
       method: 'POST',
       body: JSON.stringify({
         plate: PLATE, driver_name: DRIVER,
-        order_no: 'V202603001', customer: '北京华为研究所'
+        order_no: currentOrder?.order_no || 'N/A',
+        customer: currentOrder?.customer || '未知'
       })
     });
   } catch (e) { /* offline ok */ }
   state.receiptUploaded = true;
+  // Complete the order
+  if (currentOrder) {
+    try { await api(`/api/orders/${currentOrder.id}`, { method: 'PUT', body: JSON.stringify({ status: 'completed' }) }); } catch(e) {}
+    currentOrder = null;
+  }
   navigate('receipt-success');
 }
 
@@ -267,7 +297,7 @@ function renderReceiptSuccess(root) {
     <div class="flex-col items-center text-center mt-24" style="display:flex;">
       <div style="font-size:72px;">✅</div>
       <h2 class="mt-16">回单已提交</h2>
-      <p class="text-secondary mt-8">订单 V202603001 · 状态：待审核</p>
+      <p class="text-secondary mt-8">订单 ${currentOrder?.order_no || 'V202603001'} · 状态：待审核</p>
       <div class="card alert-blue mt-24" style="width:100%;">
         <div class="flex items-center gap-8" style="font-size:14px;">
           <span>⏱</span><span>预计 2 小时内完成审核</span>
@@ -489,7 +519,7 @@ function navigate(screen) {
 }
 
 // Init
-render();
+loadCurrentOrder();
 </script>
 </body>
 </html>

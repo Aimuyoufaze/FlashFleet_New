@@ -53,6 +53,23 @@ db.exec(`
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
   );
 
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_no TEXT NOT NULL UNIQUE,
+    cargo TEXT NOT NULL,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    customer TEXT,
+    value REAL DEFAULT 0,
+    vehicle_id INTEGER,
+    plate TEXT,
+    driver_name TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  );
+
   CREATE TABLE IF NOT EXISTS stats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL UNIQUE,
@@ -81,6 +98,24 @@ if (count.c === 0) {
   ];
   for (const v of vehicles) {
     insert.run(...v);
+  }
+}
+
+// Seed default orders if empty
+const orderCount = db.prepare('SELECT COUNT(*) as c FROM orders').get();
+if (orderCount.c === 0) {
+  const insertOrder = db.prepare(`INSERT INTO orders (order_no, cargo, origin, destination, customer, value, status) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const orders = [
+    ['V2026060101', '电子产品',  '上海', '成都', '华为技术有限公司', 8500,  'pending'],
+    ['V2026060102', '日用品',    '广州', '昆明', '京东物流',         3200,  'pending'],
+    ['V2026060103', '生鲜食品',  '北京', '沈阳', '盒马鲜生',         5800,  'pending'],
+    ['V2026060104', '建材',      '深圳', '厦门', '万科地产',         12000, 'pending'],
+    ['V2026060105', '家具',      '杭州', '南京', '宜家家居',         6500,  'pending'],
+    ['V2026060106', '汽车配件',  '天津', '郑州', '比亚迪汽车',       15000, 'pending'],
+    ['V2026060107', '医疗器械',  '成都', '重庆', '国药集团',         9800,  'pending'],
+  ];
+  for (const o of orders) {
+    insertOrder.run(...o);
   }
 }
 
