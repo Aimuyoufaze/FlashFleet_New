@@ -227,6 +227,7 @@ h3 { font-size: 16px; font-weight: 600; }
 .role-card p { font-size: 14px; color: var(--text-secondary); }
 .role-card.driver:hover { border-color: var(--green); box-shadow: 0 16px 40px rgba(93, 138, 78, 0.12); }
 .role-card.dispatcher:hover { border-color: var(--blue); box-shadow: 0 16px 40px rgba(91, 127, 158, 0.12); }
+.role-card.boss:hover { border-color: var(--amber); box-shadow: 0 16px 40px rgba(234, 179, 8, 0.15); }
 
 /* ═══ DRIVER APP ═══ */
 .driver-app .status-bar-top {

@@ -70,6 +70,19 @@ db.exec(`
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
   );
 
+  CREATE TABLE IF NOT EXISTS finances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    amount REAL NOT NULL,
+    plate TEXT,
+    driver_name TEXT,
+    description TEXT,
+    category TEXT,
+    related_id INTEGER,
+    status TEXT DEFAULT 'recorded',
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
   CREATE TABLE IF NOT EXISTS stats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL UNIQUE,

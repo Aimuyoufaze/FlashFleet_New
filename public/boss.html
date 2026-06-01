@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老板端 — 极速车队</title>
+<link rel="stylesheet" href="/css/fleet.css">
+<style>
+  .finance-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .finance-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .finance-card .fc-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .finance-card .fc-value { font-size: 28px; font-weight: 700; }
+  .finance-card .fc-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .finance-card.revenue .fc-value { color: var(--green); }
+  .finance-card.cost .fc-value { color: var(--red); }
+  .finance-card.profit .fc-value { color: var(--blue); }
+  .finance-card.pending .fc-value { color: var(--amber, #eab308); }
+
+  .monthly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .monthly-table th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--border-light);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  .monthly-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .monthly-table .positive { color: var(--green); }
+  .monthly-table .negative { color: var(--red); }
+
+  .tx-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .tx-row:last-child { border: none; }
+  .tx-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .tx-icon.repair { background: #fee2e2; }
+  .tx-icon.order { background: #dcfce7; }
+  .tx-amount { font-weight: 600; margin-left: auto; }
+  .tx-amount.repair { color: var(--red); }
+  .tx-amount.order { color: var(--green); }
+
+  @media (max-width: 768px) {
+    .finance-summary { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container fade-up" style="padding-bottom:60px;">
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="logo">👔 极速车队 <span style="font-weight:400;color:var(--text-secondary);font-size:14px;">财务报表</span></div>
+    <div class="flex items-center gap-12">
+      <span class="text-muted" style="font-size:13px;">李老板 · <span id="boss-date"></span></span>
+      <a href="/" class="btn btn-ghost btn-sm">切换角色</a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="finance-summary" id="summary-cards">
+    <div class="finance-card revenue">
+      <div class="fc-label">📦 运费总收入</div>
+      <div class="fc-value" id="sum-revenue">¥0</div>
+      <div class="fc-sub" id="sum-order-count">0 单</div>
+    </div>
+    <div class="finance-card cost">
+      <div class="fc-label">🔧 维修总支出</div>
+      <div class="fc-value" id="sum-cost">¥0</div>
+      <div class="fc-sub" id="sum-repair-count">0 笔</div>
+    </div>
+    <div class="finance-card pending">
+      <div class="fc-label">⏳ 待审批维修</div>
+      <div class="fc-value" id="sum-pending">¥0</div>
+      <div class="fc-sub" id="sum-pending-count">0 笔</div>
+    </div>
+    <div class="finance-card profit">
+      <div class="fc-label">💰 净利润</div>
+      <div class="fc-value" id="sum-profit">¥0</div>
+      <div class="fc-sub">收入 − 支出</div>
+    </div>
+  </div>
+
+  <!-- Monthly Breakdown -->
+  <div class="section-header">📊 月度收支明细</div>
+  <div class="card mb-24" style="overflow-x:auto;">
+    <table class="monthly-table">
+      <thead>
+        <tr>
+          <th>月份</th>
+          <th>运费收入</th>
+          <th>维修支出</th>
+          <th>净利润</th>
+        </tr>
+      </thead>
+      <tbody id="monthly-body">
+        <tr><td colspan="4" class="text-center text-muted">加载中…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div class="section-header">
+    📋 最近交易记录
+    <span style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm active" id="filter-all" onclick="filterTx('all')">全部</button>
+      <button class="btn btn-ghost btn-sm" id="filter-order" onclick="filterTx('order')">📦 运费</button>
+      <button class="btn btn-ghost btn-sm" id="filter-repair" onclick="filterTx('repair')">🔧 维修</button>
+    </span>
+  </div>
+  <div class="card" id="tx-list">
+    <div class="text-center text-muted" style="padding:24px;">暂无记录</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+document.getElementById('boss-date').textContent = new Date().toLocaleDateString('zh-CN');
+
+let allFinances = [];
+let txFilter = 'all';
+
+// ─── Toast ───
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  return res.json();
+}
+
+async function loadAll() {
+  try {
+    const [finances, summary] = await Promise.all([
+      api('/api/finances'),
+      api('/api/finances/summary')
+    ]);
+    allFinances = finances;
+    updateSummary(summary);
+    updateMonthly(summary.monthly || []);
+    renderTransactions();
+  } catch (e) { console.error('Load error:', e); }
+}
+
+function updateSummary(s) {
+  document.getElementById('sum-revenue').textContent = '¥' + (s.totalOrderRevenue || 0).toLocaleString();
+  document.getElementById('sum-cost').textContent = '¥' + (s.totalRepairCost || 0).toLocaleString();
+  document.getElementById('sum-pending').textContent = '¥' + (s.pendingRepairCost || 0).toLocaleString();
+  document.getElementById('sum-profit').textContent = '¥' + (s.netProfit || 0).toLocaleString();
+  document.getElementById('sum-order-count').textContent = (s.totalOrderCount || 0) + ' 单';
+  document.getElementById('sum-repair-count').textContent = (s.totalRepairCount || 0) + ' 笔';
+  document.getElementById('sum-pending-count').textContent = (s.pendingRepairCount || 0) + ' 笔';
+}
+
+function updateMonthly(monthly) {
+  // Aggregate by month
+  const map = {};
+  monthly.forEach(m => {
+    if (!map[m.month]) map[m.month] = { revenue: 0, cost: 0 };
+    if (m.type === 'order') map[m.month].revenue += m.total;
+    else map[m.month].cost += m.total;
+  });
+  const months = Object.keys(map).sort().reverse();
+  if (!months.length) {
+    document.getElementById('monthly-body').innerHTML = '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+    return;
+  }
+  document.getElementById('monthly-body').innerHTML = months.map(m => {
+    const d = map[m];
+    const profit = d.revenue - d.cost;
+    const pc = profit >= 0 ? 'positive' : 'negative';
+    return `<tr>
+      <td style="font-weight:600;">${m}</td>
+      <td class="positive">¥${d.revenue.toLocaleString()}</td>
+      <td class="negative">¥${d.cost.toLocaleString()}</td>
+      <td class="${pc}">¥${profit.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTransactions() {
+  const list = document.getElementById('tx-list');
+  let items = txFilter === 'all' ? allFinances : allFinances.filter(f => f.type === txFilter);
+  if (!items.length) {
+    list.innerHTML = '<div class="text-center text-muted" style="padding:24px;">暂无记录</div>';
+    return;
+  }
+  list.innerHTML = items.map(f => {
+    const isOrder = f.type === 'order';
+    const icon = isOrder ? '📦' : '🔧';
+    const iconCls = isOrder ? 'order' : 'repair';
+    const amountCls = isOrder ? 'order' : 'repair';
+    const prefix = isOrder ? '+' : '−';
+    const statusBadge = f.status === 'confirmed' ? '<span class="badge badge-green">已确认</span>' :
+      f.status === 'cancelled' ? '<span class="badge badge-red">已取消</span>' :
+      '<span class="badge badge-amber">待审批</span>';
+    return `<div class="tx-row">
+      <div class="tx-icon ${iconCls}">${icon}</div>
+      <div>
+        <div style="font-weight:600;font-size:14px;">${f.description || ''}</div>
+        <div style="font-size:12px;color:var(--text-secondary);">
+          ${f.plate || ''} · ${f.driver_name || ''} · ${f.created_at || ''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+        ${statusBadge}
+        <span class="tx-amount ${amountCls}">${prefix}¥${f.amount.toLocaleString()}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterTx(type) {
+  txFilter = type;
+  document.querySelectorAll('#filter-all, #filter-order, #filter-repair').forEach(b => b.classList.remove('active'));
+  document.getElementById('filter-' + type).classList.add('active');
+  renderTransactions();
+}
+
+// ─── Poll ───
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+
+</body>
+</html>

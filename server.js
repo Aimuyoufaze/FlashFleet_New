@@ -37,6 +37,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Clean URL routes
 app.get('/driver', (req, res) => res.sendFile(path.join(__dirname, 'public', 'driver.html')));
 app.get('/dispatcher', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dispatcher.html')));
+app.get('/boss', (req, res) => res.sendFile(path.join(__dirname, 'public', 'boss.html')));
 
 // File upload config
 const storage = multer.diskStorage({
@@ -97,6 +98,13 @@ app.post('/api/repairs', upload.single('photo'), (req, res) => {
   updateStats();
 
   const row = db.prepare('SELECT * FROM repairs WHERE id = ?').get(result.lastInsertRowid);
+
+  // Auto-log to finances
+  const costMap = { low: 300, medium: 1250, high: 5000, emergency: 8000 };
+  const estAmount = costMap[cost_level] || 1250;
+  db.prepare(`INSERT INTO finances (type, amount, plate, driver_name, description, category, related_id) VALUES ('repair', ?, ?, ?, ?, '维修费用', ?)`)
+    .run(estAmount, plate, driver_name, issue + ' · ' + (cost_label || ''), result.lastInsertRowid);
+
   res.status(201).json(row);
 });
 
@@ -107,10 +115,15 @@ app.put('/api/repairs/:id', (req, res) => {
 
   // If approved and vehicle still in repair, set back to idle
   if (status === 'approved') {
-    const repair = db.prepare('SELECT plate FROM repairs WHERE id = ?').get(req.params.id);
+    const repair = db.prepare('SELECT * FROM repairs WHERE id = ?').get(req.params.id);
     if (repair) {
       db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=? AND status='repair'`).run(repair.plate);
+      // Update finance record to confirmed
+      db.prepare(`UPDATE finances SET status = 'confirmed' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
     }
+  }
+  if (status === 'rejected') {
+    db.prepare(`UPDATE finances SET status = 'cancelled' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
   }
   updateStats();
 
@@ -174,6 +187,11 @@ app.put('/api/orders/:id', (req, res) => {
     if (order && order.plate) {
       db.prepare(`UPDATE vehicles SET status = 'idle', destination = NULL, cargo = NULL, updated_at = datetime('now','localtime') WHERE plate = ?`).run(order.plate);
     }
+    // Log order revenue to finances
+    if (order) {
+      db.prepare(`INSERT INTO finances (type, amount, plate, driver_name, description, category, related_id, status) VALUES ('order', ?, ?, ?, ?, '运费收入', ?, 'confirmed')`)
+        .run(order.value || 0, order.plate, order.driver_name, order.cargo + ' · ' + order.origin + '→' + order.destination, order.id);
+    }
     // Increment completed orders in stats
     const today = new Date().toISOString().slice(0, 10);
     db.prepare(`UPDATE stats SET completed_orders = completed_orders + 1 WHERE date = ?`).run(today);
@@ -207,6 +225,36 @@ function updateStats() {
     ON CONFLICT(date) DO UPDATE SET total_vehicles=?, idle_count=?, transit_count=?, repair_count=?`)
     .run(today, total.c, idle.c, transit.c, repair.c, total.c, idle.c, transit.c, repair.c);
 }
+
+// ─── FINANCES ───
+app.get('/api/finances', (req, res) => {
+  const { type, month } = req.query;
+  let sql = 'SELECT * FROM finances WHERE 1=1';
+  const params = [];
+  if (type) { sql += ' AND type = ?'; params.push(type); }
+  if (month) { sql += " AND strftime('%Y-%m', created_at) = ?"; params.push(month); }
+  sql += ' ORDER BY created_at DESC';
+  const rows = db.prepare(sql).all(...params);
+  res.json(rows);
+});
+
+app.get('/api/finances/summary', (req, res) => {
+  const repair = db.prepare("SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM finances WHERE type = 'repair' AND status != 'cancelled'").get();
+  const order = db.prepare("SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM finances WHERE type = 'order' AND status = 'confirmed'").get();
+  const pendingRepair = db.prepare("SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM finances WHERE type = 'repair' AND status = 'recorded'").get();
+  // Monthly breakdown
+  const monthly = db.prepare("SELECT strftime('%Y-%m', created_at) as month, type, COALESCE(SUM(amount), 0) as total FROM finances WHERE status != 'cancelled' GROUP BY month, type ORDER BY month DESC LIMIT 12").all();
+  res.json({
+    totalRepairCost: repair.total,
+    totalRepairCount: repair.count,
+    totalOrderRevenue: order.total,
+    totalOrderCount: order.count,
+    pendingRepairCost: pendingRepair.total,
+    pendingRepairCount: pendingRepair.count,
+    netProfit: order.total - repair.total,
+    monthly
+  });
+});
 
 // ─── START ───
 app.listen(PORT, '0.0.0.0', () => {
