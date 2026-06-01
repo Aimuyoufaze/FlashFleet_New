@@ -40,10 +40,26 @@
     </a>
   </div>
 
-  <p style="margin-top:48px;font-size:12px;color:var(--text-muted);">
+  <p style="margin-top:40px;font-size:12px;color:var(--text-muted);">
     极速车队管理信息系统 v1.0 · 全功能原型
   </p>
+  <button onclick="resetSystem()" style="margin-top:12px;padding:6px 18px;font-size:12px;border:1px solid #d1d5db;border-radius:99px;background:#fff;color:#9ca3af;cursor:pointer;transition:all .15s;"
+    onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'"
+    onmouseout="this.style.borderColor='#d1d5db';this.style.color='#9ca3af'"
+  >🔄 重置为初始状态</button>
 </div>
 
+<script>
+async function resetSystem() {
+  if (!confirm('确定要重置为初始状态吗？\n\n这将清除所有报修记录、派单记录和财务数据。')) return;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    alert('✅ ' + data.message);
+  } catch(e) {
+    alert('重置失败，请检查服务器是否运行');
+  }
+}
+</script>
 </body>
 </html>

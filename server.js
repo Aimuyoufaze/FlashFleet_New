@@ -256,6 +256,28 @@ app.get('/api/finances/summary', (req, res) => {
   });
 });
 
+// ─── RESET ───
+app.post('/api/reset', (req, res) => {
+  // Clear transactional data
+  db.exec("DELETE FROM finances; DELETE FROM repairs; DELETE FROM receipts; DELETE FROM orders;");
+  // Reset all vehicles to idle
+  db.exec("UPDATE vehicles SET status='idle', destination=NULL, cargo=NULL, eta=NULL, rest_hours=0;");
+  // Re-seed orders
+  const insertOrder = db.prepare("INSERT INTO orders (order_no, cargo, origin, destination, customer, value, status) VALUES (?,?,?,?,?,?,?)");
+  const orders = [
+    ['V2026060101', '电子产品',  '上海', '成都', '华为技术有限公司', 8500,  'pending'],
+    ['V2026060102', '日用品',    '广州', '昆明', '京东物流',         3200,  'pending'],
+    ['V2026060103', '生鲜食品',  '北京', '沈阳', '盒马鲜生',         5800,  'pending'],
+    ['V2026060104', '建材',      '深圳', '厦门', '万科地产',         12000, 'pending'],
+    ['V2026060105', '家具',      '杭州', '南京', '宜家家居',         6500,  'pending'],
+    ['V2026060106', '汽车配件',  '天津', '郑州', '比亚迪汽车',       15000, 'pending'],
+    ['V2026060107', '医疗器械',  '成都', '重庆', '国药集团',         9800,  'pending'],
+  ];
+  for (const o of orders) insertOrder.run(...o);
+  updateStats();
+  res.json({ success: true, message: '已重置为初始状态' });
+});
+
 // ─── START ───
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚛 极速车队 API 运行在端口 ${PORT}`);
