@@ -445,7 +445,7 @@ async function submitRepair() {
       })
     });
     state.latestRepair = res;
-    toast('📤 已提交！等待王姐审批');
+    toast(state.repairCostLevel === 'low' ? '📤 已提交！¥500以下自动通过' : '📤 已提交！等待王姐审批');
   } catch (e) { toast('📤 已提交（离线模式）'); }
   setTimeout(() => navigate('maintenance'), 500);
 }
@@ -464,6 +464,7 @@ async function renderMaintenanceProgress(root) {
   }
 
   const isPending = repair.status === 'pending';
+  const isPendingBoss = repair.status === 'pending_boss';
   const isApproved = repair.status === 'approved';
   const isRejected = repair.status === 'rejected';
   const isHigh = repair.cost_level === 'high';
@@ -471,13 +472,15 @@ async function renderMaintenanceProgress(root) {
   const isLow = repair.cost_level === 'low';
 
   let steps = [];
-  if (isLow) steps = ['已提交', '处理中', '已报销'];
-  else if (isHigh) steps = ['已提交', '王姐审批', '李老板审批', '待报销'];
-  else if (isEmergency) steps = ['已提交', '🚨 紧急处理', '待报销'];
+  if (isLow) steps = ['已提交', '系统自动通过', '已报销'];
+  else if (isHigh || isEmergency) steps = ['已提交', '王姐审批', '李老板审批', '待报销'];
   else steps = ['已提交', '王姐审批', '待报销'];
 
-  let doneIdx = isApproved ? steps.length : isRejected ? 1 : 1;
-  let activeIdx = isRejected ? steps.length - 1 : (isApproved ? -1 : doneIdx);
+  let doneIdx, activeIdx;
+  if (isApproved) { doneIdx = steps.length; activeIdx = -1; }
+  else if (isRejected) { doneIdx = 1; activeIdx = steps.length - 1; }
+  else if (isPendingBoss) { doneIdx = 2; activeIdx = 2; }  // passed dispatcher, waiting boss
+  else { doneIdx = 1; activeIdx = 1; }  // pending
 
   const stepsHtml = steps.map((s, i) => {
     let cls = '';
@@ -486,9 +489,18 @@ async function renderMaintenanceProgress(root) {
     return `<div class="progress-step ${cls}">${s}</div>`;
   }).join('');
 
-  const statusInfo = isApproved ? { bg: 'alert-green', badge: 'badge-green', text: '✅ 已通过', detail: isHigh ? '等待李老板最终审批' : '等待报销打款' }
-    : isRejected ? { bg: 'alert-red', badge: 'badge-red', text: '❌ 已驳回', detail: '请补充故障照片后重新提交' }
-    : { bg: 'alert-amber', badge: 'badge-blue', text: '⏳ 等待审批', detail: isEmergency ? '15分钟内自动升级处理' : '预计 15 分钟内出结果' };
+  let statusInfo;
+  if (isApproved) {
+    statusInfo = { bg: 'alert-green', badge: 'badge-green', text: '✅ 已通过', detail: isLow ? '系统自动通过，已报销' : '等待报销打款' };
+  } else if (isRejected) {
+    statusInfo = { bg: 'alert-red', badge: 'badge-red', text: '❌ 已驳回', detail: '请补充故障照片后重新提交' };
+  } else if (isPendingBoss) {
+    statusInfo = { bg: 'alert-blue', badge: 'badge-blue', text: '⏳ 王姐已通过', detail: '等待李老板最终审批' };
+  } else if (isLow) {
+    statusInfo = { bg: 'alert-green', badge: 'badge-green', text: '✅ 已通过', detail: '¥500以下自动审批，已报销' };
+  } else {
+    statusInfo = { bg: 'alert-amber', badge: 'badge-blue', text: '⏳ 等待审批', detail: isEmergency ? '15分钟内自动升级处理' : '预计 15 分钟内出结果' };
+  }
 
   root.innerHTML = `
     <div class="top-bar">

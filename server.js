@@ -97,13 +97,20 @@ app.post('/api/repairs', upload.single('photo'), (req, res) => {
   db.prepare(`UPDATE vehicles SET status='repair', updated_at=datetime('now','localtime') WHERE plate=? AND status != 'repair'`).run(plate);
   updateStats();
 
+  // ¥500以下：自动通过，无需审批
+  if (cost_level === 'low') {
+    db.prepare(`UPDATE repairs SET status='approved', approver='系统自动', updated_at=datetime('now','localtime') WHERE id=?`).run(result.lastInsertRowid);
+    db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=?`).run(plate);
+    updateStats();
+  }
+
   const row = db.prepare('SELECT * FROM repairs WHERE id = ?').get(result.lastInsertRowid);
 
   // Auto-log to finances
   const costMap = { low: 300, medium: 1250, high: 5000, emergency: 8000 };
   const estAmount = costMap[cost_level] || 1250;
-  db.prepare(`INSERT INTO finances (type, amount, plate, driver_name, description, category, related_id) VALUES ('repair', ?, ?, ?, ?, '维修费用', ?)`)
-    .run(estAmount, plate, driver_name, issue + ' · ' + (cost_label || ''), result.lastInsertRowid);
+  db.prepare(`INSERT INTO finances (type, amount, plate, driver_name, description, category, related_id, status) VALUES ('repair', ?, ?, ?, ?, '维修费用', ?, ?)`)
+    .run(estAmount, plate, driver_name, issue + ' · ' + (cost_label || ''), result.lastInsertRowid, cost_level === 'low' ? 'confirmed' : 'recorded');
 
   res.status(201).json(row);
 });
@@ -113,12 +120,27 @@ app.put('/api/repairs/:id', (req, res) => {
   db.prepare(`UPDATE repairs SET status=?, approver=?, notes=?, updated_at=datetime('now','localtime') WHERE id=?`)
     .run(status, approver, notes, req.params.id);
 
-  // If approved and vehicle still in repair, set back to idle
+  // If approved: for high-cost, route to boss for final approval
   if (status === 'approved') {
     const repair = db.prepare('SELECT * FROM repairs WHERE id = ?').get(req.params.id);
-    if (repair) {
+    if (repair && (repair.cost_level === 'high' || repair.cost_level === 'emergency')) {
+      // High cost: dispatcher approved → now needs boss approval
+      db.prepare(`UPDATE repairs SET status='pending_boss', approver=?, updated_at=datetime('now','localtime') WHERE id=?`)
+        .run(approver + '（已通过，待老板审批）', req.params.id);
+    } else if (repair) {
+      // Normal approval: set vehicle back to idle
       db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=? AND status='repair'`).run(repair.plate);
-      // Update finance record to confirmed
+      db.prepare(`UPDATE finances SET status = 'confirmed' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
+    }
+  }
+
+  // Boss approval for high-cost repairs
+  if (status === 'boss_approved') {
+    const repair = db.prepare('SELECT * FROM repairs WHERE id = ?').get(req.params.id);
+    if (repair) {
+      db.prepare(`UPDATE repairs SET status='approved', approver=?, updated_at=datetime('now','localtime') WHERE id=?`)
+        .run((repair.approver || '') + ' → 李老板（已通过）', req.params.id);
+      db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=? AND status='repair'`).run(repair.plate);
       db.prepare(`UPDATE finances SET status = 'confirmed' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
     }
   }
@@ -185,7 +207,8 @@ app.put('/api/orders/:id', (req, res) => {
   if (status === 'completed') {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
     if (order && order.plate) {
-      db.prepare(`UPDATE vehicles SET status = 'idle', destination = NULL, cargo = NULL, updated_at = datetime('now','localtime') WHERE plate = ?`).run(order.plate);
+      db.prepare(`UPDATE vehicles SET status = 'idle', location = ?, destination = NULL, cargo = NULL, updated_at = datetime('now','localtime') WHERE plate = ?`)
+        .run(order.destination, order.plate);
     }
     // Log order revenue to finances
     if (order) {

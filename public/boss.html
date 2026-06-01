@@ -109,6 +109,10 @@
     </div>
   </div>
 
+  <!-- Boss Approvals (high-cost repairs) -->
+  <div class="section-header" id="boss-approvals-header" style="display:none;">🔔 待老板审批 <span class="text-muted" id="boss-pending-count"></span></div>
+  <div id="boss-approvals"></div>
+
   <!-- Monthly Breakdown -->
   <div class="section-header">📊 月度收支明细</div>
   <div class="card mb-24" style="overflow-x:auto;">
@@ -165,16 +169,21 @@ async function api(url, opts = {}) {
   return res.json();
 }
 
+let allRepairs = [];
+
 async function loadAll() {
   try {
-    const [finances, summary] = await Promise.all([
+    const [finances, summary, repairs] = await Promise.all([
       api('/api/finances'),
-      api('/api/finances/summary')
+      api('/api/finances/summary'),
+      api('/api/repairs')
     ]);
     allFinances = finances;
+    allRepairs = repairs;
     updateSummary(summary);
     updateMonthly(summary.monthly || []);
     renderTransactions();
+    renderBossApprovals();
   } catch (e) { console.error('Load error:', e); }
 }
 
@@ -251,6 +260,51 @@ function filterTx(type) {
   document.querySelectorAll('#filter-all, #filter-order, #filter-repair').forEach(b => b.classList.remove('active'));
   document.getElementById('filter-' + type).classList.add('active');
   renderTransactions();
+}
+
+// ─── Boss Approvals ───
+function renderBossApprovals() {
+  const pending = allRepairs.filter(r => r.status === 'pending_boss');
+  const header = document.getElementById('boss-approvals-header');
+  const container = document.getElementById('boss-approvals');
+  document.getElementById('boss-pending-count').textContent = pending.length ? `(${pending.length}项)` : '';
+
+  if (!pending.length) {
+    header.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  header.style.display = 'flex';
+  container.innerHTML = pending.map(r => `
+    <div class="repair-item alert-red mb-8">
+      <div class="repair-info">
+        <div class="repair-plate">🔧 ${r.plate}</div>
+        <div class="repair-detail">${r.driver_name} · ${r.location || ''}</div>
+        <div class="repair-detail">故障：${r.issue} · 金额：${r.cost_label}</div>
+        <div class="repair-detail" style="color:var(--amber);">⏳ 王姐已通过，等待您最终审批</div>
+      </div>
+      <div class="repair-actions">
+        <button class="btn btn-success btn-sm" onclick="bossApprove('${r.id}')">✅ 通过</button>
+        <button class="btn btn-danger btn-sm" onclick="bossReject('${r.id}')">❌ 驳回</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function bossApprove(id) {
+  try {
+    await api(`/api/repairs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'boss_approved', approver: '李老板' }) });
+    showToast('✅ 已通过！');
+    loadAll();
+  } catch (e) { showToast('操作失败'); }
+}
+
+async function bossReject(id) {
+  try {
+    await api(`/api/repairs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'rejected', approver: '李老板', notes: '老板驳回' }) });
+    showToast('❌ 已驳回');
+    loadAll();
+  } catch (e) { showToast('操作失败'); }
 }
 
 // ─── Poll ───

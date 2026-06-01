@@ -209,7 +209,8 @@ function filterVehicles(status, tab) {
 function renderPendingRepairs(repairs) {
   const container = document.getElementById('pending-repairs');
   const pending = repairs.filter(r => r.status === 'pending');
-  const done = repairs.filter(r => r.status !== 'pending');
+  const pendingBoss = repairs.filter(r => r.status === 'pending_boss');
+  const done = repairs.filter(r => r.status !== 'pending' && r.status !== 'pending_boss');
 
   document.getElementById('pending-count').textContent = pending.length ? `(${pending.length}项)` : '';
   document.getElementById('processed-area').classList.toggle('hidden', done.length === 0);
@@ -259,6 +260,17 @@ function renderPendingRepairs(repairs) {
     </div>`;
   });
 
+  pendingBoss.forEach(r => {
+    html += `<div class="repair-item alert-blue" style="border-left-color: var(--amber);">
+      <div class="repair-info">
+        <div class="repair-plate">🔧 ${r.plate}</div>
+        <div class="repair-detail">${r.driver_name} · ${r.location || ''}</div>
+        <div class="repair-detail">故障：${r.issue} · 金额：${r.cost_label}</div>
+        <div class="repair-detail" style="color:var(--amber);">⏳ 已通过，等待李老板最终审批</div>
+      </div>
+    </div>`;
+  });
+
   done.forEach(r => {
     const approved = r.status === 'approved';
     const borderClass = approved ? 'alert-green' : 'alert-red';
@@ -287,8 +299,13 @@ function renderPendingRepairs(repairs) {
 
 async function approve(id) {
   try {
+    const repair = allRepairs.find(r => r.id === id);
     await api(`/api/repairs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'approved', approver: '王姐' }) });
-    showToast('✅ 已通过！');
+    if (repair && (repair.cost_level === 'high' || repair.cost_level === 'emergency')) {
+      showToast('✅ 已通过！已转交李老板最终审批');
+    } else {
+      showToast('✅ 已通过！');
+    }
     loadAll();
   } catch (e) { showToast('操作失败'); }
 }
