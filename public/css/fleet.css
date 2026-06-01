@@ -401,15 +401,16 @@ h3 { font-size: 16px; font-weight: 600; }
 
 /* ═══ MODAL ═══ */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
   display: flex; align-items: center; justify-content: center;
-  z-index: 100; backdrop-filter: blur(4px);
+  z-index: 100; backdrop-filter: blur(6px);
 }
 .modal-overlay.hidden { display: none; }
 .modal-card {
-  background: var(--card); border-radius: 16px; padding: 24px;
+  background: #faf5eb; border-radius: 16px; padding: 24px;
   width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  border: 1px solid #e8dcc8;
   animation: fadeIn .2s ease;
 }
 .modal-header {
