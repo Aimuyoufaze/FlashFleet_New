@@ -124,10 +124,10 @@ function renderHome(root) {
       ${currentOrder ? `<div class="banner banner-success mb-12" style="animation: fadeIn .4s ease;">🔔 新任务已指派！请查看下方订单信息并及时上传回单</div>` : ''}
       ${orderHtml}
 
-      <div class="big-action" onclick="navigate('receipt-photo')" style="${receiptDone || !currentOrder ? 'opacity:0.5;' : ''}">
+      <div class="big-action" onclick="${currentOrder && !receiptDone ? "navigate('receipt-photo')" : currentOrder ? '' : "toast('📭 暂无指派订单，请联系调度员王姐派单')"}" style="${receiptDone || !currentOrder ? 'opacity:0.4;cursor:not-allowed;' : ''}">
         <div class="icon">📸</div>
         <div class="label">回单拍照上传</div>
-        <div class="sub">${receiptDone ? '已完成' : !currentOrder ? '暂无订单' : '一键拍照，自动识别 — 无需填表'}</div>
+        <div class="sub">${receiptDone ? '✅ 已完成，等待审核' : !currentOrder ? '🔒 有待派订单后才可上传' : '一键拍照，自动识别 — 无需填表'}</div>
       </div>
 
       <div class="fab-emergency" onclick="navigate('maintenance-report')">
