@@ -121,6 +121,7 @@ function renderHome(root) {
   root.innerHTML = `
     <div class="mt-16">
       <div class="section-header">📦 当前任务</div>
+      ${currentOrder ? `<div class="banner banner-success mb-12" style="animation: fadeIn .4s ease;">🔔 新任务已指派！请查看下方订单信息并及时上传回单</div>` : ''}
       ${orderHtml}
 
       <div class="big-action" onclick="navigate('receipt-photo')" style="${receiptDone || !currentOrder ? 'opacity:0.5;' : ''}">
@@ -518,8 +519,35 @@ function navigate(screen) {
   window.scrollTo(0, 0);
 }
 
+// ══════════════════════ POLLING ══════════════════════
+let lastOrderId = null;
+async function pollOrders() {
+  try {
+    const orders = await api('/api/orders');
+    const assigned = orders.find(o => o.status === 'assigned' && o.plate === PLATE);
+    if (assigned && assigned.id !== lastOrderId) {
+      // New order detected!
+      lastOrderId = assigned.id;
+      currentOrder = assigned;
+      state.receiptUploaded = false;
+      if (state.screen !== 'home') {
+        toast('📦 收到新订单！' + assigned.origin + ' → ' + assigned.destination);
+      }
+      render();
+    }
+    if (!assigned) {
+      lastOrderId = null;
+      if (currentOrder) {
+        currentOrder = null;
+        render();
+      }
+    }
+  } catch (e) {}
+}
+
 // Init
 loadCurrentOrder();
+setInterval(pollOrders, 10000);
 </script>
 </body>
 </html>
