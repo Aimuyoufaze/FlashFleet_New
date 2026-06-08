@@ -41,6 +41,7 @@ const state = {
   repairVoiceNote: '',
   latestRepair: null,
   receiptUploaded: false,
+  vehicleStatus: 'idle',
 };
 
 // ─── Clock ───
@@ -135,6 +136,12 @@ function renderHome(root) {
         <div class="label">一键报修</div>
       </div>
 
+      ${state.vehicleStatus === 'repair' ? `
+      <div class="card alert-green mt-16" style="text-align:center;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px;">🔧 车辆维修中</div>
+        <button class="btn btn-success" onclick="markVehicleReady()">✅ 维修完毕，恢复待命</button>
+      </div>
+      ` : ''}
       <div class="flex gap-12 mt-24">
         <button class="btn btn-ghost btn-sm flex-1" onclick="toast('📞 接通王姐中…')">📞 联系调度</button>
         <button class="btn btn-ghost btn-sm flex-1" onclick="navigate('maintenance')">📋 维修记录</button>
@@ -447,7 +454,31 @@ async function submitRepair() {
     state.latestRepair = res;
     toast(state.repairCostLevel === 'low' ? '📤 已提交！¥500以下自动通过' : '📤 已提交！等待王姐审批');
   } catch (e) { toast('📤 已提交（离线模式）'); }
-  setTimeout(() => navigate('maintenance'), 500);
+  // Show dialog asking to mark vehicle as repair
+  setTimeout(() => showRepairStatusDialog(), 800);
+}
+
+function showRepairStatusDialog() {
+  const dialog = document.createElement('div');
+  dialog.id = 'repair-status-dialog';
+  dialog.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">🔧 车辆状态</span>
+        </div>
+        <p style="font-size:15px;margin:12px 0;color:var(--text);">是否将车辆标记为<b>维修状态</b>？</p>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">标记后调度端将看到该车辆不可用，维修完成后可恢复。</p>
+        <div class="flex gap-12">
+          <button class="btn btn-ghost flex-1" id="btn-repair-no">暂不标记</button>
+          <button class="btn btn-danger flex-2" style="flex:2;" id="btn-repair-yes">🔧 标记为维修</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  document.getElementById('btn-repair-yes').onclick = () => { markVehicleRepair(); dialog.remove(); };
+  document.getElementById('btn-repair-no').onclick = () => { dialog.remove(); };
 }
 
 // ══════════════════════ MAINTENANCE PROGRESS ══════════════════════
@@ -531,6 +562,33 @@ function navigate(screen) {
   window.scrollTo(0, 0);
 }
 
+// ══════════════════════ VEHICLE STATUS ══════════════════════
+async function loadVehicleStatus() {
+  try {
+    const vehicles = await api('/api/vehicles');
+    const v = vehicles.find(v => v.plate === PLATE);
+    if (v) state.vehicleStatus = v.status;
+  } catch(e) {}
+}
+
+async function markVehicleRepair() {
+  try {
+    await api('/api/repairs/vehicle-status', { method: 'PUT', body: JSON.stringify({ plate: PLATE, status: 'repair' }) });
+    state.vehicleStatus = 'repair';
+    toast('🔧 车辆已标记为维修状态');
+    render();
+  } catch(e) { toast('操作失败'); }
+}
+
+async function markVehicleReady() {
+  try {
+    await api('/api/repairs/vehicle-status', { method: 'PUT', body: JSON.stringify({ plate: PLATE, status: 'idle' }) });
+    state.vehicleStatus = 'idle';
+    toast('✅ 车辆已恢复待命状态');
+    render();
+  } catch(e) { toast('操作失败'); }
+}
+
 // ══════════════════════ POLLING ══════════════════════
 let lastOrderId = null;
 async function pollOrders() {
@@ -559,7 +617,9 @@ async function pollOrders() {
 
 // Init
 loadCurrentOrder();
+loadVehicleStatus();
 setInterval(pollOrders, 10000);
+setInterval(loadVehicleStatus, 15000);
 </script>
 </body>
 </html>

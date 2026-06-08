@@ -75,6 +75,15 @@ app.put('/api/vehicles/:id', (req, res) => {
   res.json(row);
 });
 
+// ─── VEHICLE STATUS (driver control) ───
+app.put('/api/repairs/vehicle-status', (req, res) => {
+  const { plate, status } = req.body;
+  db.prepare(`UPDATE vehicles SET status=?, updated_at=datetime('now','localtime') WHERE plate=?`)
+    .run(status, plate);
+  updateStats();
+  res.json({ success: true, plate, status });
+});
+
 // ─── REPAIRS ───
 app.get('/api/repairs', (req, res) => {
   const { status } = req.query;
@@ -93,9 +102,7 @@ app.post('/api/repairs', upload.single('photo'), (req, res) => {
   const result = db.prepare(`INSERT INTO repairs (plate, driver_name, issue, location, cost_level, cost_label, photo_url, voice_note) VALUES (?,?,?,?,?,?,?,?)`)
     .run(plate, driver_name, issue, location, cost_level, cost_label, photo_url, voice_note || null);
 
-  // Update vehicle status to repair
-  db.prepare(`UPDATE vehicles SET status='repair', updated_at=datetime('now','localtime') WHERE plate=? AND status != 'repair'`).run(plate);
-  updateStats();
+  // Vehicle status now controlled by driver via explicit "mark as repair" dialog
 
   // ¥500以下：自动通过，无需审批
   if (cost_level === 'low') {
