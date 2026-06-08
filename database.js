@@ -111,9 +111,9 @@ if (count.c === 0) {
     ['粤B42535', '谭师傅', 'idle',     '南宁', null,   null,       null, 2.6],
     ['京B91937', '韩师傅', 'repair',   '龙岗修理厂', null, null,    null, 0],
     ['粤B71789', '杨师傅', 'idle',     '广州', null,   null,       null, 1.2],
-    ['粤B48449', '萧师傅', 'repair',   '龙岗修理厂', null, null,    null, 0],
-    ['鄂B89564', '卫师傅', 'repair',   '西郊修理厂', null, null,    null, 0],
-    ['浙A23917', '姜师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['粤B48449', '萧师傅', 'idle',     '东莞', null,   null,       null, 0.8],
+    ['鄂B89564', '卫师傅', 'idle',     '武汉', null,   null,       null, 1.5],
+    ['浙A23917', '姜师傅', 'idle',     '宁波', null,   null,       null, 0.3],
     ['粤B29686', '郑师傅', 'idle',     '南宁', null,   null,       null, 2.8],
     ['粤B93757', '冯师傅', 'idle',     '厦门', null,   null,       null, 3.4],
     ['京D34519', '于师傅', 'transit',  '大连', '济南',  '家具',     '06/08 14:00', 0],
@@ -123,24 +123,24 @@ if (count.c === 0) {
     ['浙B70811', '冯师傅', 'idle',     '济南', null,   null,       null, 0.5],
     ['沪B94116', '高师傅', 'transit',  '贵阳', '郑州',  '电子产品', '06/08 14:00', 0],
     ['川A44921', '卫师傅', 'idle',     '贵阳', null,   null,       null, 2.0],
-    ['川B19391', '赵师傅', 'repair',   '中远修理厂', null, null,    null, 0],
+    ['川B19391', '赵师傅', 'idle',     '成都', null,   null,       null, 1.8],
     ['京E47867', '胡师傅', 'idle',     '上海', null,   null,       null, 3.3],
     ['浙A78784', '张师傅', 'transit',  '武汉', '厦门',  '饮料',     '06/10 10:00', 0],
-    ['苏A79730', '林师傅', 'repair',   '中远修理厂', null, null,    null, 0],
+    ['苏A79730', '林师傅', 'idle',     '南京', null,   null,       null, 1.0],
     ['苏B82376', '卫师傅', 'idle',     '苏州', null,   null,       null, 0.1],
     ['浙B19071', '孔师傅', 'idle',     '武汉', null,   null,       null, 3.2],
     ['鄂A74169', '蔡师傅', 'idle',     '贵阳', null,   null,       null, 3.4],
     ['粤C18675', '严师傅', 'transit',  '合肥', '长沙',  '医疗器械', '06/08 14:00', 0],
     ['京B23747', '徐师傅', 'idle',     '杭州', null,   null,       null, 3.2],
-    ['苏A74660', '韩师傅', 'repair',   '南站修理厂', null, null,    null, 0],
+    ['苏A74660', '韩师傅', 'idle',     '无锡', null,   null,       null, 2.1],
     ['京A56206', '许师傅', 'transit',  '青岛', '杭州',  '化工原料', '06/10 15:00', 0],
-    ['鄂B98382', '田师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['鄂B98382', '田师傅', 'idle',     '荆州', null,   null,       null, 0.9],
     ['粤B94743', '董师傅', 'idle',     '南昌', null,   null,       null, 3.7],
     ['浙B95607', '姚师傅', 'repair',   '张师傅修理厂', null, null,  null, 0],
     ['京E96021', '马师傅', 'repair',   '老王修理厂', null, null,    null, 0],
-    ['川B89859', '唐师傅', 'repair',   '刘厂长修理厂', null, null,  null, 0],
+    ['川B89859', '唐师傅', 'idle',     '绵阳', null,   null,       null, 0.5],
     ['鄂B90540', '蒋师傅', 'repair',   '张师傅修理厂', null, null,  null, 0],
-    ['京B21189', '胡师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['京B21189', '胡师傅', 'idle',     '石家庄', null, null,       null, 0],
     ['京A75104', '曹师傅', 'transit',  '成都', '贵阳',  '家具',     '06/09 05:00', 0],
     ['粤B48426', '罗师傅', 'transit',  '苏州', '重庆',  '医疗器械', '06/09 12:00', 0],
     ['京D41386', '董师傅', 'transit',  '厦门', '南宁',  '服装',     '06/09 16:00', 0],
@@ -178,7 +178,7 @@ if (orderCount.c === 0) {
 const today = new Date().toISOString().slice(0, 10);
 const statCount = db.prepare('SELECT COUNT(*) as c FROM stats WHERE date = ?').get(today);
 if (statCount.c === 0) {
-  db.prepare('INSERT INTO stats (date, total_vehicles, idle_count, transit_count, repair_count, completed_orders) VALUES (?, 50, 17, 15, 18, 12)').run(today);
+  db.prepare('INSERT INTO stats (date, total_vehicles, idle_count, transit_count, repair_count, completed_orders) VALUES (?, 50, 26, 15, 9, 12)').run(today);
 }
 
 module.exports = db;
