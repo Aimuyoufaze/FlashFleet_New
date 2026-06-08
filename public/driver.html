@@ -477,7 +477,7 @@ function showRepairStatusDialog() {
     </div>
   `;
   document.body.appendChild(dialog);
-  document.getElementById('btn-repair-yes').onclick = () => { markVehicleRepair(); dialog.remove(); navigate('home'); };
+  document.getElementById('btn-repair-yes').onclick = async () => { await markVehicleRepair(); dialog.remove(); navigate('home'); };
   document.getElementById('btn-repair-no').onclick = () => { dialog.remove(); navigate('home'); };
 }
 
@@ -567,7 +567,10 @@ async function loadVehicleStatus() {
   try {
     const vehicles = await api('/api/vehicles');
     const v = vehicles.find(v => v.plate === PLATE);
-    if (v) state.vehicleStatus = v.status;
+    if (v && v.status !== state.vehicleStatus) {
+      state.vehicleStatus = v.status;
+      if (state.screen === 'home') render();
+    }
   } catch(e) {}
 }
 
