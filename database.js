@@ -98,16 +98,58 @@ db.exec(`
 // Seed default vehicles if empty
 const count = db.prepare('SELECT COUNT(*) as c FROM vehicles').get();
 if (count.c === 0) {
-  const insert = db.prepare(`INSERT INTO vehicles (plate, driver_name, status, location, destination, cargo, eta, rest_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insert = db.prepare('INSERT INTO vehicles (plate, driver_name, status, location, destination, cargo, eta, rest_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
   const vehicles = [
     ['京A12345', '赵师傅', 'idle',     '深圳', null,   null,       null, 2.0],
     ['京A12346', '王师傅', 'idle',     '广州', null,   null,       null, 0.5],
     ['京A12347', '刘师傅', 'idle',     '杭州', null,   null,       null, 0],
-    ['京B23456', '李师傅', 'transit',  'G15高速', '北京', '电子产品', '04/16 08:00', 0],
-    ['京B23457', '陈师傅', 'transit',  'G60高速', '广州', '家电',     '04/15 22:00', 0],
-    ['京B23458', '周师傅', 'transit',  'G42高速', '武汉', '日用品',   '04/15 14:00', 0],
-    ['京C34567', '张师傅', 'repair',   '陈厂长修理厂', null, null,   '04/15 18:00', 0],
-    ['京C34568', '吴师傅', 'repair',   '刘厂长修理厂', null, null,   '04/16', 0],
+    ['京B23456', '李师傅', 'transit',  'G15高速', '北京', '电子产品', '06/08 08:00', 0],
+    ['京B23457', '陈师傅', 'transit',  'G60高速', '广州', '家电',     '06/08 22:00', 0],
+    ['京B23458', '周师傅', 'transit',  'G42高速', '武汉', '日用品',   '06/08 14:00', 0],
+    ['京C34567', '张师傅', 'repair',   '陈厂长修理厂', null, null,   '06/08 18:00', 0],
+    ['京C34568', '吴师傅', 'repair',   '刘厂长修理厂', null, null,   '06/09', 0],
+    ['粤B42535', '谭师傅', 'idle',     '南宁', null,   null,       null, 2.6],
+    ['京B91937', '韩师傅', 'repair',   '龙岗修理厂', null, null,    null, 0],
+    ['粤B71789', '杨师傅', 'idle',     '广州', null,   null,       null, 1.2],
+    ['粤B48449', '萧师傅', 'repair',   '龙岗修理厂', null, null,    null, 0],
+    ['鄂B89564', '卫师傅', 'repair',   '西郊修理厂', null, null,    null, 0],
+    ['浙A23917', '姜师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['粤B29686', '郑师傅', 'idle',     '南宁', null,   null,       null, 2.8],
+    ['粤B93757', '冯师傅', 'idle',     '厦门', null,   null,       null, 3.4],
+    ['京D34519', '于师傅', 'transit',  '大连', '济南',  '家具',     '06/08 14:00', 0],
+    ['粤B16012', '范师傅', 'transit',  '南宁', '昆明',  '建材',     '06/08 14:00', 0],
+    ['渝A29510', '沈师傅', 'transit',  '贵阳', '北京',  '汽车配件', '06/10 15:00', 0],
+    ['粤A89713', '萧师傅', 'idle',     '深圳', null,   null,       null, 2.7],
+    ['浙B70811', '冯师傅', 'idle',     '济南', null,   null,       null, 0.5],
+    ['沪B94116', '高师傅', 'transit',  '贵阳', '郑州',  '电子产品', '06/08 14:00', 0],
+    ['川A44921', '卫师傅', 'idle',     '贵阳', null,   null,       null, 2.0],
+    ['川B19391', '赵师傅', 'repair',   '中远修理厂', null, null,    null, 0],
+    ['京E47867', '胡师傅', 'idle',     '上海', null,   null,       null, 3.3],
+    ['浙A78784', '张师傅', 'transit',  '武汉', '厦门',  '饮料',     '06/10 10:00', 0],
+    ['苏A79730', '林师傅', 'repair',   '中远修理厂', null, null,    null, 0],
+    ['苏B82376', '卫师傅', 'idle',     '苏州', null,   null,       null, 0.1],
+    ['浙B19071', '孔师傅', 'idle',     '武汉', null,   null,       null, 3.2],
+    ['鄂A74169', '蔡师傅', 'idle',     '贵阳', null,   null,       null, 3.4],
+    ['粤C18675', '严师傅', 'transit',  '合肥', '长沙',  '医疗器械', '06/08 14:00', 0],
+    ['京B23747', '徐师傅', 'idle',     '杭州', null,   null,       null, 3.2],
+    ['苏A74660', '韩师傅', 'repair',   '南站修理厂', null, null,    null, 0],
+    ['京A56206', '许师傅', 'transit',  '青岛', '杭州',  '化工原料', '06/10 15:00', 0],
+    ['鄂B98382', '田师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['粤B94743', '董师傅', 'idle',     '南昌', null,   null,       null, 3.7],
+    ['浙B95607', '姚师傅', 'repair',   '张师傅修理厂', null, null,  null, 0],
+    ['京E96021', '马师傅', 'repair',   '老王修理厂', null, null,    null, 0],
+    ['川B89859', '唐师傅', 'repair',   '刘厂长修理厂', null, null,  null, 0],
+    ['鄂B90540', '蒋师傅', 'repair',   '张师傅修理厂', null, null,  null, 0],
+    ['京B21189', '胡师傅', 'repair',   '北环修理厂', null, null,    null, 0],
+    ['京A75104', '曹师傅', 'transit',  '成都', '贵阳',  '家具',     '06/09 05:00', 0],
+    ['粤B48426', '罗师傅', 'transit',  '苏州', '重庆',  '医疗器械', '06/09 12:00', 0],
+    ['京D41386', '董师傅', 'transit',  '厦门', '南宁',  '服装',     '06/09 16:00', 0],
+    ['京E70862', '陈师傅', 'idle',     '北京', null,   null,       null, 3.4],
+    ['川A46218', '宋师傅', 'transit',  '佛山', '北京',  '汽车配件', '06/08 22:00', 0],
+    ['京D16563', '谢师傅', 'transit',  '济南', '杭州',  '医疗器械', '06/09 08:00', 0],
+    ['京A88793', '郑师傅', 'repair',   '龙岗修理厂', null, null,    null, 0],
+    ['京C52649', '何师傅', 'repair',   '东城修理厂', null, null,    null, 0],
+    ['粤A34918', '姜师傅', 'repair',   '陈厂长修理厂', null, null,  null, 0],
   ];
   for (const v of vehicles) {
     insert.run(...v);
@@ -117,7 +159,7 @@ if (count.c === 0) {
 // Seed default orders if empty
 const orderCount = db.prepare('SELECT COUNT(*) as c FROM orders').get();
 if (orderCount.c === 0) {
-  const insertOrder = db.prepare(`INSERT INTO orders (order_no, cargo, origin, destination, customer, value, status) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const insertOrder = db.prepare('INSERT INTO orders (order_no, cargo, origin, destination, customer, value, status) VALUES (?, ?, ?, ?, ?, ?, ?)');
   const orders = [
     ['V2026060101', '电子产品',  '上海', '成都', '华为技术有限公司', 8500,  'pending'],
     ['V2026060102', '日用品',    '广州', '昆明', '京东物流',         3200,  'pending'],
@@ -136,8 +178,7 @@ if (orderCount.c === 0) {
 const today = new Date().toISOString().slice(0, 10);
 const statCount = db.prepare('SELECT COUNT(*) as c FROM stats WHERE date = ?').get(today);
 if (statCount.c === 0) {
-  db.prepare(`INSERT INTO stats (date, total_vehicles, idle_count, transit_count, repair_count, completed_orders)
-    VALUES (?, 8, 3, 3, 2, 12)`).run(today);
+  db.prepare('INSERT INTO stats (date, total_vehicles, idle_count, transit_count, repair_count, completed_orders) VALUES (?, 50, 17, 15, 18, 12)').run(today);
 }
 
 module.exports = db;
