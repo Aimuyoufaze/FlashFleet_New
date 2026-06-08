@@ -135,8 +135,7 @@ app.put('/api/repairs/:id', (req, res) => {
       db.prepare(`UPDATE repairs SET status='pending_boss', approver=?, updated_at=datetime('now','localtime') WHERE id=?`)
         .run(approver + '（已通过，待老板审批）', req.params.id);
     } else if (repair) {
-      // Normal approval: set vehicle back to idle
-      db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=? AND status='repair'`).run(repair.plate);
+      // Vehicle stays in repair until driver marks it ready
       db.prepare(`UPDATE finances SET status = 'confirmed' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
     }
   }
@@ -147,7 +146,6 @@ app.put('/api/repairs/:id', (req, res) => {
     if (repair) {
       db.prepare(`UPDATE repairs SET status='approved', approver=?, updated_at=datetime('now','localtime') WHERE id=?`)
         .run((repair.approver || '') + ' → 李老板（已通过）', req.params.id);
-      db.prepare(`UPDATE vehicles SET status='idle', updated_at=datetime('now','localtime') WHERE plate=? AND status='repair'`).run(repair.plate);
       db.prepare(`UPDATE finances SET status = 'confirmed' WHERE related_id = ? AND type = 'repair'`).run(req.params.id);
     }
   }
