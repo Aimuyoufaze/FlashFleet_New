@@ -477,8 +477,8 @@ function showRepairStatusDialog() {
     </div>
   `;
   document.body.appendChild(dialog);
-  document.getElementById('btn-repair-yes').onclick = () => { markVehicleRepair(); dialog.remove(); };
-  document.getElementById('btn-repair-no').onclick = () => { dialog.remove(); };
+  document.getElementById('btn-repair-yes').onclick = () => { markVehicleRepair(); dialog.remove(); navigate('home'); };
+  document.getElementById('btn-repair-no').onclick = () => { dialog.remove(); navigate('home'); };
 }
 
 // ══════════════════════ MAINTENANCE PROGRESS ══════════════════════
